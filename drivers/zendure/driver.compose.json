@@ -32,6 +32,6 @@
       }
     ],
   "energy": {
-    "batteries": ["OTHER"]
+    "homeBattery": true
   }
 }
