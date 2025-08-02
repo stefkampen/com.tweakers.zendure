@@ -7,5 +7,8 @@
   },
   "1.0.2": {
     "en": "Marked battery as Home Battery"
+  },
+  "1.0.3": {
+    "en": "Added ability to have State of Charge exclude the minimal SoC value."
   }
 }
