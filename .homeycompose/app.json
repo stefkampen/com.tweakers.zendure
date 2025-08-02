@@ -1,0 +1,29 @@
+{
+  "id": "com.tweakers.zendure",
+  "version": "1.0.0",
+  "compatibility": ">=12.4.0",
+  "sdk": 3,
+  "platforms": [
+    "local"
+  ],
+  "name": {
+    "en": "Zendure Local"
+  },
+  "description": {
+    "en": "Local connection for Zendure devices"
+  },
+  "category": [
+    "energy"
+  ],
+  "brandColor": "#000000",
+  "permissions": [],
+  "images": {
+    "small": "/assets/images/small.png",
+    "large": "/assets/images/large.png"
+  },
+  "author": {
+    "name": "Stef Kampen",
+    "email": "stef@stefkampen.nl"
+  },
+  "source": "https://github.com/stefkampen/com.tweakers.zendure"
+}

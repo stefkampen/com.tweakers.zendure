@@ -1,0 +1,22 @@
+{
+  "actions": [
+    {
+      "id": "set-power",
+      "title": {
+        "en": "Set power"
+      },
+      "args": [
+        {
+          "type": "number",
+          "name": "power",
+          "placeholder": {
+            "en": "800"
+          },
+          "min": -2400,
+          "max": 2400,
+          "step": 1
+        }
+      ]
+    }
+  ]
+}
