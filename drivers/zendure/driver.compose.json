@@ -6,8 +6,18 @@
   "capabilities": [
     "measure_battery",
     "measure_power",
-    "measure_temperature"
+    "measure_temperature",
+    "meter_power.charged",
+    "meter_power.discharged"
   ],
+  "capabilitiesOptions": {
+    "meter_power.charged": {
+      "title": { "en": "Charged Energy" }
+    },
+    "meter_power.discharged": {
+      "title": { "en": "Discharged Energy" }
+    }
+  },
   "platforms": [
     "local"
   ],
@@ -32,6 +42,29 @@
       }
     ],
   "energy": {
-    "homeBattery": true
-  }
+    "homeBattery": true,
+    "meterPowerImportedCapability": "meter_power.charged",
+    "meterPowerExportedCapability": "meter_power.discharged"
+  },
+  "settings": [
+    {
+      "type": "group",
+      "label": {
+        "en": "Battery Settings"
+      },
+      "children": [
+        {
+          "id": "minsoc_correction",
+          "type": "checkbox",
+          "label": {
+            "en": "Minimum SoC Correction"
+          },
+          "hint": {
+            "en": "Enable correction for minimum state of charge (SoC). When enabled, the device will adjust battery percentage to exclude the minimum state of charge. Helps with efficiency calculations."
+          },
+          "value": false
+        }
+      ]
+    }
+  ]
 }

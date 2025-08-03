@@ -6,6 +6,10 @@ module.exports = class MyDevice extends Homey.Device {
   private ip?: string;
   private sn?: string;
 
+  private chargeMeter: number = 0;
+  private dischargeMeter: number = 0;
+  private lastPowerMeter?: number;
+
   onDiscoveryResult(discoveryResult: DiscoveryResultMDNSSD) {
     // Return a truthy value here if the discovery result matches your device.
     return discoveryResult.id === this.getData().id;
@@ -40,6 +44,13 @@ module.exports = class MyDevice extends Homey.Device {
    */
   async onInit() {
     this.log('MyDevice has been initialized');
+
+    if (!this.hasCapability('meter_power.charged')) {
+      await this.addCapability('meter_power.charged');
+    }
+    if (!this.hasCapability('meter_power.discharged')) {
+      await this.addCapability('meter_power.discharged');
+    }
 
     // Register the set-power flow action listener
     this.homey.flow.getActionCard('set-power')
@@ -84,7 +95,7 @@ module.exports = class MyDevice extends Homey.Device {
       } catch (error) {
         this.error('Error polling device:', error);
       }
-    }, 30000); // 30 seconds
+    }, 15000); // 15 seconds
   }
 
   /**
@@ -164,8 +175,38 @@ module.exports = class MyDevice extends Homey.Device {
       this.getCapabilities().forEach(capability => {
         this.log(`Setting ${capability} to ${result.properties[capability]}`);
       });
-      this.setCapabilityValue('measure_battery', result.properties.electricLevel);
+
+      if (this.getMinSocCorrectionEnabled()) {
+        const minSoc = result.properties.minSoc/10;
+        let level = Math.round((result.properties.electricLevel - minSoc) / (100 - minSoc) * 100);
+        if (level < 0) {
+          level = 0;
+        }
+        this.log(`Setting battery level to ${minSoc} ${level}`);
+        this.setCapabilityValue('measure_battery', level);
+      } else {
+        this.setCapabilityValue('measure_battery', result.properties.electricLevel);
+      }
+
       this.setCapabilityValue('measure_power', result.properties.gridInputPower || -result.properties.outputHomePower);
+
+      if (this.lastPowerMeter) {
+        let charge = result.properties.gridInputPower > 0;
+        let powerPerHour = result.properties.gridInputPower || result.properties.outputHomePower;
+        let timeDelta = (Date.now() - this.lastPowerMeter) / 1000;
+        if (timeDelta < 60) {
+          if (charge) {
+            this.chargeMeter += powerPerHour / 3600 * timeDelta / 1000;
+          } else {
+            this.dischargeMeter += powerPerHour / 3600 * timeDelta / 1000;
+          }
+
+          this.log(`Power in charge: ${this.chargeMeter} discharge: ${this.dischargeMeter}`);
+        }
+      }
+      this.setCapabilityValue('meter_power.charged', this.chargeMeter);
+      this.setCapabilityValue('meter_power.discharged', this.dischargeMeter);
+      this.lastPowerMeter = Date.now();
 
       let temp = 0;
       result.packData.map((item: any) => {
@@ -178,8 +219,6 @@ module.exports = class MyDevice extends Homey.Device {
       //await tag('gridInputNum',result.properties.gridInputPower || -result.properties.outputHomePower);
   
       
-      this.log('POST request successful!');
-      this.log(`Response: ${JSON.stringify(result, null, 2)}`);
     
     } catch (error) {
       this.log(`Error: ${error}`);
@@ -216,6 +255,14 @@ module.exports = class MyDevice extends Homey.Device {
     changedKeys: string[];
   }): Promise<string | void> {
     this.log("MyDevice settings where changed");
+  }
+
+  /**
+   * Get the current MinSOC correction setting value
+   * @returns {boolean} True if MinSOC correction is enabled, false otherwise
+   */
+  private getMinSocCorrectionEnabled(): boolean {
+    return this.getSetting('minsoc_correction') || false;
   }
 
   /**
