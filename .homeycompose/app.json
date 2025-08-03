@@ -1,6 +1,6 @@
 {
   "id": "com.tweakers.zendure",
-  "version": "1.0.4",
+  "version": "1.0.5",
   "compatibility": ">=12.4.0",
   "sdk": 3,
   "platforms": [

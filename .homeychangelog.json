@@ -13,5 +13,8 @@
   },
   "1.0.4": {
     "en": "New icon"
+  },
+  "1.0.5": {
+    "en": "Guestimate used energy for the Homey energy page."
   }
 }
