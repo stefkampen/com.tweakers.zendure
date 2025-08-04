@@ -183,7 +183,7 @@ module.exports = class MyDevice extends Homey.Device {
       if (!this.sn) {
         this.sn = result.sn;
         // prepare device for smart control (to ensure no flash writes)
-        this.sendRequest({ smartMode: 0 });
+        // this.sendRequest({ smartMode: 0 });
       }
 
       if (this.getMinSocCorrectionEnabled()) {
