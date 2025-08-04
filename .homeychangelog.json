@@ -19,5 +19,8 @@
   },
   "1.0.6": {
     "en": "Added functionalities for Round Trip Efficiency"
+  },
+  "1.0.7": {
+    "en": "Remove setting smartMode for now, causes some issues"
   }
 }
