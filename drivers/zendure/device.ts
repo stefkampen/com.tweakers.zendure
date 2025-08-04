@@ -219,10 +219,9 @@ module.exports = class MyDevice extends Homey.Device {
             } catch (error) {
               this.error('Error storing dischargeMeter:', error);
             }
-
-            this.setCapabilityValue('efficiency',  this.chargeMeter > 0 ? this.dischargeMeter / this.chargeMeter * 100 : 100);
           }
 
+          this.setCapabilityValue('efficiency',  this.chargeMeter > 0 ? this.dischargeMeter / this.chargeMeter * 100 : 100);
           this.log(`Power in charge: ${this.chargeMeter} discharge: ${this.dischargeMeter} avg: ${avgPowerPerHour}`);
         }
       }
