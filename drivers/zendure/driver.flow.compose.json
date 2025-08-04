@@ -17,6 +17,15 @@
           "step": 1
         }
       ]
+    },
+    {
+      "id": "reset-meters",
+      "title": {
+        "en": "Reset energy meters"
+      },
+      "titleFormatted": {
+        "en": "Reset charge and discharge meters"
+      }
     }
   ]
 }

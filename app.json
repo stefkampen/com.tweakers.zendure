@@ -52,6 +52,22 @@
             "step": 1
           }
         ]
+      },
+      {
+        "id": "reset-meters",
+        "title": {
+          "en": "Reset energy meters"
+        },
+        "titleFormatted": {
+          "en": "Reset charge and discharge meters"
+        },
+        "args": [
+          {
+            "type": "device",
+            "name": "device",
+            "filter": "driver_id=zendure"
+          }
+        ]
       }
     ]
   },
@@ -66,7 +82,8 @@
         "measure_power",
         "measure_temperature",
         "meter_power.charged",
-        "meter_power.discharged"
+        "meter_power.discharged",
+        "efficiency"
       ],
       "capabilitiesOptions": {
         "meter_power.charged": {
@@ -136,6 +153,22 @@
       "id": "zendure"
     }
   ],
+  "capabilities": {
+    "efficiency": {
+      "type": "number",
+      "title": {
+        "en": "Round Trip Efficiency (all time)"
+      },
+      "units": {
+        "en": "%"
+      },
+      "min": 0,
+      "max": 100,
+      "uiComponent": "sensor",
+      "getable": true,
+      "setable": false
+    }
+  },
   "discovery": {
     "zendure": {
       "type": "mdns-sd",

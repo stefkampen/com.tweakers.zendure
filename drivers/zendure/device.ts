@@ -9,6 +9,7 @@ module.exports = class MyDevice extends Homey.Device {
   private chargeMeter: number = 0;
   private dischargeMeter: number = 0;
   private lastPowerMeter?: number;
+  private lastPowerMeterValue?: number;
 
   onDiscoveryResult(discoveryResult: DiscoveryResultMDNSSD) {
     // Return a truthy value here if the discovery result matches your device.
@@ -17,21 +18,13 @@ module.exports = class MyDevice extends Homey.Device {
 
   async onDiscoveryAvailable(discoveryResult: DiscoveryResultMDNSSD) {
     // This method will be executed once when the device has been found (onDiscoveryResult returned true)
-    //this.api = new MyDeviceAPI(discoveryResult.address);
-    //await this.api.connect(); // When this throws, the device will become unavailable.
     this.ip = discoveryResult.address;
-    // Store the IP address for later use
-    await this.setStoreValue('ip', discoveryResult.address);
     this.startPolling();
-    //this.sendRequest({ smartMode: 1 });
-    //this.startPolling();
   }
 
   onDiscoveryAddressChanged(discoveryResult: DiscoveryResultMDNSSD) {
     // Update your connection details here, reconnect when the device is offline
-    //this.api.address = discoveryResult.address;
-    //this.api.reconnect().catch(this.error); 
-   this.setStoreValue('ip', discoveryResult.address);
+   this.ip = discoveryResult.address;
   }
 
   onDiscoveryLastSeenChanged(discoveryResult: DiscoveryResultMDNSSD) {
@@ -51,6 +44,19 @@ module.exports = class MyDevice extends Homey.Device {
     if (!this.hasCapability('meter_power.discharged')) {
       await this.addCapability('meter_power.discharged');
     }
+    if (!this.hasCapability('efficiency')) {
+      await this.addCapability('efficiency');
+    }
+
+    // Load persistent meter values from storage
+    this.chargeMeter = this.getStoreValue('chargeMeter') || 0;
+    this.dischargeMeter = this.getStoreValue('dischargeMeter') || 0;
+    this.log(`Loaded persistent meters - charge: ${this.chargeMeter} kWh, discharge: ${this.dischargeMeter} kWh`);
+
+    // Set initial capability values from stored data
+    this.setCapabilityValue('meter_power.charged', this.chargeMeter);
+    this.setCapabilityValue('meter_power.discharged', this.dischargeMeter);
+    this.setCapabilityValue('efficiency',  this.chargeMeter > 0 ? this.dischargeMeter / this.chargeMeter * 100 : 100);
 
     // Register the set-power flow action listener
     this.homey.flow.getActionCard('set-power')
@@ -61,13 +67,9 @@ module.exports = class MyDevice extends Homey.Device {
 
           let request: { acMode: number, inputLimit?: number, outputLimit?: number } = {
             acMode: args.power < 0 ? 1 : 2,
+            inputLimit: args.power < 0 ? -args.power : 0,
+            outputLimit: args.power > 0 ? args.power : 0,
           };
-
-          if (args.power < 0) {
-            request.inputLimit = -args.power;
-          } else {
-            request.outputLimit = args.power;
-          }
 
           // Implement your power setting logic here
           this.sendRequest(request);
@@ -79,6 +81,20 @@ module.exports = class MyDevice extends Homey.Device {
         } catch (error) {
           this.error('Error setting power:', error);
           throw error; // Throw error to show failure in flow
+        }
+      });
+
+    // Register the reset-meters flow action listener
+    this.homey.flow.getActionCard('reset-meters')
+      .registerRunListener(async (args, state) => {
+        this.log('Resetting charge and discharge meters');
+        
+        try {
+          await this.resetMeters();
+          return true;
+        } catch (error) {
+          this.error('Error resetting meters:', error);
+          throw error;
         }
       });
     
@@ -167,14 +183,8 @@ module.exports = class MyDevice extends Homey.Device {
       if (!this.sn) {
         this.sn = result.sn;
         // prepare device for smart control (to ensure no flash writes)
-        this.sendRequest({ smartMode: 1 });
+        this.sendRequest({ smartMode: 0 });
       }
-
-      //const level = result.properties.electricLevel;
-      //global.set('batteryLevel', `${level}`);
-      this.getCapabilities().forEach(capability => {
-        this.log(`Setting ${capability} to ${result.properties[capability]}`);
-      });
 
       if (this.getMinSocCorrectionEnabled()) {
         const minSoc = result.properties.minSoc/10;
@@ -190,22 +200,35 @@ module.exports = class MyDevice extends Homey.Device {
 
       this.setCapabilityValue('measure_power', result.properties.gridInputPower || -result.properties.outputHomePower);
 
+      const powerPerHour = result.properties.gridInputPower || -result.properties.outputHomePower;
       if (this.lastPowerMeter) {
-        let charge = result.properties.gridInputPower > 0;
-        let powerPerHour = result.properties.gridInputPower || result.properties.outputHomePower;
+        const avgPowerPerHour = (powerPerHour + this.lastPowerMeterValue) / 2;
         let timeDelta = (Date.now() - this.lastPowerMeter) / 1000;
         if (timeDelta < 60) {
-          if (charge) {
-            this.chargeMeter += powerPerHour / 3600 * timeDelta / 1000;
+          if (avgPowerPerHour >= 0) {
+            this.chargeMeter += avgPowerPerHour / 3600 * timeDelta / 1000;
+            try {
+              await this.setStoreValue('chargeMeter', this.chargeMeter);
+            } catch (error) {
+              this.error('Error storing chargeMeter:', error);
+            }
           } else {
-            this.dischargeMeter += powerPerHour / 3600 * timeDelta / 1000;
+            this.dischargeMeter += -avgPowerPerHour / 3600 * timeDelta / 1000;
+            try {
+              await this.setStoreValue('dischargeMeter', this.dischargeMeter);
+            } catch (error) {
+              this.error('Error storing dischargeMeter:', error);
+            }
+
+            this.setCapabilityValue('efficiency',  this.chargeMeter > 0 ? this.dischargeMeter / this.chargeMeter * 100 : 100);
           }
 
-          this.log(`Power in charge: ${this.chargeMeter} discharge: ${this.dischargeMeter}`);
+          this.log(`Power in charge: ${this.chargeMeter} discharge: ${this.dischargeMeter} avg: ${avgPowerPerHour}`);
         }
       }
       this.setCapabilityValue('meter_power.charged', this.chargeMeter);
       this.setCapabilityValue('meter_power.discharged', this.dischargeMeter);
+      this.lastPowerMeterValue = powerPerHour;
       this.lastPowerMeter = Date.now();
 
       let temp = 0;
@@ -228,6 +251,29 @@ module.exports = class MyDevice extends Homey.Device {
     // Example of updating capabilities:
     // this.setCapabilityValue('onoff', newValue);
     // this.setCapabilityValue('measure_power', powerValue);
+  }
+
+  /**
+   * Reset the charge and discharge meters
+   */
+  async resetMeters() {
+    this.log('Resetting charge and discharge meters');
+    
+    this.chargeMeter = 0;
+    this.dischargeMeter = 0;
+    
+    try {
+      await this.setStoreValue('chargeMeter', this.chargeMeter);
+      await this.setStoreValue('dischargeMeter', this.dischargeMeter);
+      
+      this.setCapabilityValue('meter_power.charged', this.chargeMeter);
+      this.setCapabilityValue('meter_power.discharged', this.dischargeMeter);
+      
+      this.log('Meters reset successfully');
+    } catch (error) {
+      this.error('Error resetting meters:', error);
+      throw error;
+    }
   }
 
   /**

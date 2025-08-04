@@ -1,0 +1,10 @@
+{
+    "type": "number",
+    "title": { "en": "Round Trip Efficiency (all time)" },
+    "units": { "en": "%" },
+    "min": 0,
+    "max": 100,
+    "uiComponent": "sensor",
+    "getable": true,
+    "setable": false
+  }
