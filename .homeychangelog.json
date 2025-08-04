@@ -16,5 +16,8 @@
   },
   "1.0.5": {
     "en": "Guestimate used energy for the Homey energy page."
+  },
+  "1.0.6": {
+    "en": "Added functionalities for Round Trip Efficiency"
   }
 }
