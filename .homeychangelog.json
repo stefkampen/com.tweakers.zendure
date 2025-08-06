@@ -22,5 +22,8 @@
   },
   "1.0.7": {
     "en": "Remove setting smartMode for now, causes some issues"
+  },
+  "1.0.8": {
+    "en": "Improve compatibility with older Homeys, output adjustment setting (to align output with your smart meter)"
   }
 }

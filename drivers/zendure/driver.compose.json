@@ -64,6 +64,17 @@
             "en": "Enable correction for minimum state of charge (SoC). When enabled, the device will adjust battery percentage to exclude the minimum state of charge. Helps with efficiency calculations."
           },
           "value": false
+        },
+        {
+          "id": "output_correction",
+          "type": "number",
+          "label": {
+            "en": "Output wattage correction"
+          },
+          "hint": {
+            "en": "Correction for output wattage. When enabled, the device will adjust output wattage with this number of watts. Helps with efficiency calculations."
+          },
+          "value": 0
         }
       ]
     }

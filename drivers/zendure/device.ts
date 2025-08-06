@@ -10,6 +10,13 @@ module.exports = class MyDevice extends Homey.Device {
   private dischargeMeter: number = 0;
   private lastPowerMeter?: number;
   private lastPowerMeterValue?: number;
+  private currentValues: { 
+    outputHomePower?: number;
+    gridInputPower?: number;
+    electricLevel?: number;
+    minSoc?: number;
+    hyperTmp?: number;
+  } = {};
 
   onDiscoveryResult(discoveryResult: DiscoveryResultMDNSSD) {
     // Return a truthy value here if the discovery result matches your device.
@@ -137,6 +144,7 @@ module.exports = class MyDevice extends Homey.Device {
     this.log(`Setting power output to ${reqData} at ${endpoint}`);
     
     try {
+      const fetch = (await import('node-fetch')).default;
       const response = await fetch(endpoint, {
         method: 'POST',
         headers: {
@@ -166,9 +174,8 @@ module.exports = class MyDevice extends Homey.Device {
     this.log(`Polling device at ${this.ip}`);
 
     const endpoint = `http://${this.ip}/properties/report`;
-    this.log(endpoint);
     try {
-      // Create the POST request
+      const fetch = (await import('node-fetch')).default;
       const response = await fetch(endpoint, {
         method: 'GET',
       });
@@ -180,45 +187,43 @@ module.exports = class MyDevice extends Homey.Device {
       // Get the response
       const result = await response.json() as any;
 
+      const { outputHomePower, gridInputPower, electricLevel, minSoc } = result.properties;
+
+      this.currentValues = {
+        outputHomePower: outputHomePower > 0 ? outputHomePower + this.getOutputCorrection() : outputHomePower,
+        gridInputPower,
+        electricLevel,
+        minSoc: minSoc/10,
+      };
+
+      if (this.currentValues.outputHomePower === undefined || this.currentValues.gridInputPower === undefined) {
+        this.log(`No power values received`);
+        return;
+      }
+
       if (!this.sn) {
         this.sn = result.sn;
         // prepare device for smart control (to ensure no flash writes)
         // this.sendRequest({ smartMode: 0 });
       }
 
-      if (this.getMinSocCorrectionEnabled()) {
-        const minSoc = result.properties.minSoc/10;
-        let level = Math.round((result.properties.electricLevel - minSoc) / (100 - minSoc) * 100);
-        if (level < 0) {
-          level = 0;
-        }
-        this.log(`Setting battery level to ${minSoc} ${level}`);
-        this.setCapabilityValue('measure_battery', level);
-      } else {
-        this.setCapabilityValue('measure_battery', result.properties.electricLevel);
-      }
+      this.processCurrentValues();
 
-      this.setCapabilityValue('measure_power', result.properties.gridInputPower || -result.properties.outputHomePower);
-
-      const powerPerHour = result.properties.gridInputPower || -result.properties.outputHomePower;
-      if (this.lastPowerMeter) {
+      const powerPerHour = this.currentValues.gridInputPower || -this.currentValues.outputHomePower;
+      if (this.lastPowerMeter && this.lastPowerMeterValue !== undefined) {
         const avgPowerPerHour = (powerPerHour + this.lastPowerMeterValue) / 2;
         let timeDelta = (Date.now() - this.lastPowerMeter) / 1000;
         if (timeDelta < 60) {
-          if (avgPowerPerHour >= 0) {
-            this.chargeMeter += avgPowerPerHour / 3600 * timeDelta / 1000;
-            try {
+          try {
+            if (avgPowerPerHour >= 0) {
+              this.chargeMeter += avgPowerPerHour / 3600 * timeDelta / 1000;
               await this.setStoreValue('chargeMeter', this.chargeMeter);
-            } catch (error) {
-              this.error('Error storing chargeMeter:', error);
-            }
-          } else {
-            this.dischargeMeter += -avgPowerPerHour / 3600 * timeDelta / 1000;
-            try {
+            } else {
+              this.dischargeMeter += -avgPowerPerHour / 3600 * timeDelta / 1000;
               await this.setStoreValue('dischargeMeter', this.dischargeMeter);
-            } catch (error) {
-              this.error('Error storing dischargeMeter:', error);
             }
+          } catch (error) {
+            this.error('Error storing dischargeMeter:', error);
           }
 
           this.setCapabilityValue('efficiency',  this.chargeMeter > 0 ? this.dischargeMeter / this.chargeMeter * 100 : 100);
@@ -236,20 +241,34 @@ module.exports = class MyDevice extends Homey.Device {
       });
 
       this.setCapabilityValue('measure_temperature', temp / result.packData.length / 100);
-
-      //await tag('batteryLevelNum', level);
-      //await tag('gridInputNum',result.properties.gridInputPower || -result.properties.outputHomePower);
-  
-      
-    
+        
     } catch (error) {
       this.log(`Error: ${error}`);
       throw error;
     }
+  }
     
     // Example of updating capabilities:
     // this.setCapabilityValue('onoff', newValue);
     // this.setCapabilityValue('measure_power', powerValue);
+  private processCurrentValues() {
+    if (this.currentValues.outputHomePower !== undefined && this.currentValues.gridInputPower !== undefined && this.currentValues.electricLevel !== undefined && this.currentValues.minSoc !== undefined)  {
+      this.log(`Power: ${this.currentValues.outputHomePower} ${this.currentValues.gridInputPower} ${this.currentValues.electricLevel} ${this.currentValues.minSoc}`);
+      this.setCapabilityValue('measure_power', this.currentValues.gridInputPower || -this.currentValues.outputHomePower);
+      
+
+      if (this.getMinSocCorrectionEnabled()) {
+        const minSoc = this.currentValues.minSoc;
+        let level = Math.round((this.currentValues.electricLevel - minSoc) / (100 - minSoc) * 100);
+        if (level < 0) {
+          level = 0;
+        }
+        this.log(`Setting battery level to ${minSoc} ${level}`);
+        this.setCapabilityValue('measure_battery', level);
+      } else {
+        this.setCapabilityValue('measure_battery', this.currentValues.electricLevel);
+      }
+    }
   }
 
   /**
@@ -308,6 +327,20 @@ module.exports = class MyDevice extends Homey.Device {
    */
   private getMinSocCorrectionEnabled(): boolean {
     return this.getSetting('minsoc_correction') || false;
+  }
+
+  private getOutputCorrection(): number {
+    return this.getSetting('output_correction') || 0;
+  }
+
+  /**
+   * Get the Homey's network IP address
+   * @returns {string} The IP address of the Homey
+   */
+  async getHomeyIP() {
+    const localAddress = await this.homey.cloud.getLocalAddress();
+    const [localIp] = localAddress.split(':');
+    return localIp;
   }
 
   /**

@@ -6,5 +6,6 @@
     "max": 100,
     "uiComponent": "sensor",
     "getable": true,
-    "setable": false
+    "setable": false,
+    "insights": true
   }
