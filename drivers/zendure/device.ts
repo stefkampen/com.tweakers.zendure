@@ -20,12 +20,14 @@ module.exports = class MyDevice extends Homey.Device {
 
   onDiscoveryResult(discoveryResult: DiscoveryResultMDNSSD) {
     // Return a truthy value here if the discovery result matches your device.
+    this.log(`Discovery result: ${JSON.stringify(this.getData().id)} ${JSON.stringify(discoveryResult)}`);
     return discoveryResult.id === this.getData().id;
   }
 
   async onDiscoveryAvailable(discoveryResult: DiscoveryResultMDNSSD) {
     // This method will be executed once when the device has been found (onDiscoveryResult returned true)
     this.ip = discoveryResult.address;
+    this.log(`Discovery available: ${JSON.stringify(discoveryResult)}`);
     this.startPolling();
   }
 
@@ -186,6 +188,12 @@ module.exports = class MyDevice extends Homey.Device {
     
       // Get the response
       const result = await response.json() as any;
+      this.log(`Result: ${this.ip} ${JSON.stringify(result)}`);
+
+      if (!result || !result.properties) {
+        this.log(`No properties received`);
+        return;
+      }
 
       const { outputHomePower, gridInputPower, electricLevel, minSoc } = result.properties;
 
