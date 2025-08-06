@@ -25,5 +25,8 @@
   },
   "1.0.8": {
     "en": "Improve compatibility with older Homeys, output adjustment setting (to align output with your smart meter)"
+  },
+  "1.0.9": {
+    "en": "Add additional logging for debugging"
   }
 }
