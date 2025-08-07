@@ -10,12 +10,12 @@
     "en": "Zendure Local"
   },
   "description": {
-    "en": "Local connection for Zendure devices"
+    "en": "Your batteries, your rules"
   },
   "category": [
     "energy"
   ],
-  "brandColor": "#AAAAAA",
+  "brandColor": "#009F7F",
   "permissions": [],
   "images": {
     "small": "/assets/images/small.png",

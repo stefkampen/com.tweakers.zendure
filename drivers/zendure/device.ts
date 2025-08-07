@@ -27,6 +27,8 @@ module.exports = class MyDevice extends Homey.Device {
   async onDiscoveryAvailable(discoveryResult: DiscoveryResultMDNSSD) {
     // This method will be executed once when the device has been found (onDiscoveryResult returned true)
     this.ip = discoveryResult.address;
+    // store permanent
+    this.setStoreValue('ip', discoveryResult.address);
     this.log(`Discovery available: ${JSON.stringify(discoveryResult)}`);
     this.startPolling();
   }
@@ -58,6 +60,8 @@ module.exports = class MyDevice extends Homey.Device {
     }
 
     // Load persistent meter values from storage
+    this.ip = this.getStoreValue('ip');
+    this.sn = this.getStoreValue('sn');
     this.chargeMeter = this.getStoreValue('chargeMeter') || 0;
     this.dischargeMeter = this.getStoreValue('dischargeMeter') || 0;
     this.log(`Loaded persistent meters - charge: ${this.chargeMeter} kWh, discharge: ${this.dischargeMeter} kWh`);
@@ -107,12 +111,16 @@ module.exports = class MyDevice extends Homey.Device {
         }
       });
     
+      if (this.ip) {
+        this.startPolling();
+      }
   }
 
   /**
    * Start polling the device every 15 seconds
    */
   private startPolling() {
+    if (this.pollInterval) return;
     this.pollDevice();
     this.pollInterval = setInterval(async () => {
       try {
@@ -136,7 +144,7 @@ module.exports = class MyDevice extends Homey.Device {
   /**
    * Set the power output of the device
    */
-  private async sendRequest(properties: any) {    
+  private async sendRequest(properties: any, retry: number = 0) {    
     if (!this.ip) {
       throw new Error('Device IP address not available');
     }
@@ -156,6 +164,10 @@ module.exports = class MyDevice extends Homey.Device {
       });
 
       if (!response.ok) {
+        if (retry < 1) {
+          await this.sendRequest(properties, retry + 1);
+          return;
+        }
         throw new Error(`HTTP error! status: ${response.status}`);
       }
 
@@ -165,6 +177,10 @@ module.exports = class MyDevice extends Homey.Device {
       return result;
     } catch (error) {
       this.error(`Error setting power output: ${error}`);
+      if (retry < 1) {
+        await this.sendRequest(properties, retry + 1);
+        return;
+      }
       throw error;
     }
   }
@@ -195,13 +211,14 @@ module.exports = class MyDevice extends Homey.Device {
         return;
       }
 
-      const { outputHomePower, gridInputPower, electricLevel, minSoc } = result.properties;
+      const { outputHomePower, gridInputPower, electricLevel, minSoc, hyperTmp } = result.properties;
 
       this.currentValues = {
         outputHomePower: outputHomePower > 0 ? outputHomePower + this.getOutputCorrection() : outputHomePower,
         gridInputPower,
         electricLevel,
         minSoc: minSoc/10,
+        hyperTmp: (hyperTmp - 2731) / 10,
       };
 
       if (this.currentValues.outputHomePower === undefined || this.currentValues.gridInputPower === undefined) {
@@ -211,6 +228,7 @@ module.exports = class MyDevice extends Homey.Device {
 
       if (!this.sn) {
         this.sn = result.sn;
+        this.setStoreValue('sn', result.sn);
         // prepare device for smart control (to ensure no flash writes)
         // this.sendRequest({ smartMode: 0 });
       }
@@ -242,13 +260,6 @@ module.exports = class MyDevice extends Homey.Device {
       this.setCapabilityValue('meter_power.discharged', this.dischargeMeter);
       this.lastPowerMeterValue = powerPerHour;
       this.lastPowerMeter = Date.now();
-
-      let temp = 0;
-      result.packData.map((item: any) => {
-        temp += item.maxTemp;
-      });
-
-      this.setCapabilityValue('measure_temperature', temp / result.packData.length / 100);
         
     } catch (error) {
       this.log(`Error: ${error}`);
@@ -260,10 +271,10 @@ module.exports = class MyDevice extends Homey.Device {
     // this.setCapabilityValue('onoff', newValue);
     // this.setCapabilityValue('measure_power', powerValue);
   private processCurrentValues() {
-    if (this.currentValues.outputHomePower !== undefined && this.currentValues.gridInputPower !== undefined && this.currentValues.electricLevel !== undefined && this.currentValues.minSoc !== undefined)  {
+    if (this.currentValues.outputHomePower !== undefined && this.currentValues.gridInputPower !== undefined && this.currentValues.electricLevel !== undefined && this.currentValues.minSoc !== undefined && this.currentValues.hyperTmp !== undefined)  {
       this.log(`Power: ${this.currentValues.outputHomePower} ${this.currentValues.gridInputPower} ${this.currentValues.electricLevel} ${this.currentValues.minSoc}`);
       this.setCapabilityValue('measure_power', this.currentValues.gridInputPower || -this.currentValues.outputHomePower);
-      
+      this.setCapabilityValue('measure_temperature', this.currentValues.hyperTmp);
 
       if (this.getMinSocCorrectionEnabled()) {
         const minSoc = this.currentValues.minSoc;
