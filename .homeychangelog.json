@@ -28,5 +28,8 @@
   },
   "1.0.9": {
     "en": "Add additional logging for debugging"
+  },
+  "1.0.10": {
+    "en": "Store ip for increased reliability"
   }
 }
