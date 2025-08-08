@@ -20,11 +20,11 @@
   "permissions": [],
   "images": {
     "small": "/assets/images/small.png",
-    "large": "/assets/images/large.png"
+    "large": "/assets/images/large.png",
+    "xlarge": "/assets/images/xlarge.png"
   },
   "author": {
-    "name": "Stef Kampen",
-    "email": "stef@stefkampen.nl"
+    "name": "Stef Kampen"
   },
   "source": "https://github.com/stefkampen/com.tweakers.zendure",
   "support": "https://gathering.tweakers.net/forum/list_messages/2306860",

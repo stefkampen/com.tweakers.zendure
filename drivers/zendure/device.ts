@@ -264,10 +264,7 @@ module.exports = class MyDevice extends Homey.Device {
       this.log(`Error: ${error}`);
     }
   }
-    
-    // Example of updating capabilities:
-    // this.setCapabilityValue('onoff', newValue);
-    // this.setCapabilityValue('measure_power', powerValue);
+
   private processCurrentValues() {
     if (this.currentValues.outputHomePower !== undefined && this.currentValues.gridInputPower !== undefined && this.currentValues.electricLevel !== undefined && this.currentValues.minSoc !== undefined && this.currentValues.hyperTmp !== undefined)  {
       this.log(`Power: ${this.currentValues.outputHomePower} ${this.currentValues.gridInputPower} ${this.currentValues.electricLevel} ${this.currentValues.minSoc}`);
