@@ -4,12 +4,12 @@
       <!-- Alles zichtbaar maken -->
       <rect width="100%" height="100%" fill="white"/>
       <!-- De Z uitsnijden (zwart = transparant in mask) -->
-      <path d="M8 9h6v1.5l-3.5 2h3.5v1.5h-6v-1.5l3.5-2h-3.5v-1.5z" fill="black"/>
+      <path d="M8 9.5h6.5v1.5l-3.5 2h3.5v1.5h-6v-1.5l3.5-2h-3.5v-1.5z" fill="black"/>
     </mask>
   </defs>
   
   <!-- Batterij met masker (waar zwart in mask = gat) -->
-  <rect x="2" y="7" width="18" height="10" rx="2" ry="2" fill="black" mask="url(#cutout)"/>
+  <rect x="1" y="7" width="20" height="10" rx="2" ry="2" fill="black" mask="url(#cutout)"/>
   <!-- Connector -->
-  <rect x="20" y="10" width="2" height="4" rx="1" ry="1" fill="black"/>
+  <rect x="21" y="10" width="2" height="4" rx="1" ry="1" fill="black"/>
 </svg>

@@ -69,7 +69,7 @@ module.exports = class MyDevice extends Homey.Device {
     // Set initial capability values from stored data
     this.setCapabilityValue('meter_power.charged', this.chargeMeter);
     this.setCapabilityValue('meter_power.discharged', this.dischargeMeter);
-    this.setCapabilityValue('efficiency',  this.chargeMeter > 0 ? this.dischargeMeter / this.chargeMeter * 100 : 100);
+    this.setCapabilityValue('efficiency',  this.chargeMeter > 0 ? Math.round(this.dischargeMeter / this.chargeMeter * 1000) / 10 : 100);
 
     // Register the set-power flow action listener
     this.homey.flow.getActionCard('set-power')
@@ -252,7 +252,7 @@ module.exports = class MyDevice extends Homey.Device {
             this.error('Error storing dischargeMeter:', error);
           }
 
-          this.setCapabilityValue('efficiency',  this.chargeMeter > 0 ? this.dischargeMeter / this.chargeMeter * 100 : 100);
+          this.setCapabilityValue('efficiency',  this.chargeMeter > 0 ? Math.round(this.dischargeMeter / this.chargeMeter * 1000) / 10 : 100);
           this.log(`Power in charge: ${this.chargeMeter} discharge: ${this.dischargeMeter} avg: ${avgPowerPerHour}`);
         }
       }

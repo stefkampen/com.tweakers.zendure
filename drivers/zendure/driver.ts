@@ -17,7 +17,7 @@ module.exports = class MyDriver extends Homey.Driver {
     const discoveryStrategy = this.getDiscoveryStrategy();
     const discoveryResults = discoveryStrategy.getDiscoveryResults();
 
-    const devices = Object.values(discoveryResults).map((discoveryResult) => {
+    let devices = Object.values(discoveryResults).map((discoveryResult) => {
 
       const result = discoveryResult as DiscoveryResultMDNSSD;
       console.log(result);
@@ -28,6 +28,10 @@ module.exports = class MyDriver extends Homey.Driver {
           host: result.host,
         },
       };
+    });
+
+    devices = devices.filter((device) => {
+      return !device.name.toLowerCase().includes('meter');
     });
 
     return devices;
