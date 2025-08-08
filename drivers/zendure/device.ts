@@ -181,7 +181,6 @@ module.exports = class MyDevice extends Homey.Device {
         await this.sendRequest(properties, retry + 1);
         return;
       }
-      throw error;
     }
   }
 
@@ -263,7 +262,6 @@ module.exports = class MyDevice extends Homey.Device {
         
     } catch (error) {
       this.log(`Error: ${error}`);
-      throw error;
     }
   }
     
