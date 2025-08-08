@@ -31,5 +31,8 @@
   },
   "1.0.10": {
     "en": "Store ip for increased reliability"
+  },
+  "1.0.11": {
+    "en": "Improve stability"
   }
 }
