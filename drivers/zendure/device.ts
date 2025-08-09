@@ -187,7 +187,7 @@ module.exports = class MyDevice extends Homey.Device {
   /**
    * Query the device for current status
    */
-  private async pollDevice() {
+  private async pollDevice(retry: number = 0) {
     this.log(`Polling device at ${this.ip}`);
 
     const endpoint = `http://${this.ip}/properties/report`;
@@ -198,7 +198,12 @@ module.exports = class MyDevice extends Homey.Device {
       });
     
       if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
+        if (retry < 1) {
+          await this.pollDevice(retry + 1);
+          return;
+        }
+        this.setUnavailable();
+        return;
       }
     
       // Get the response
@@ -206,6 +211,7 @@ module.exports = class MyDevice extends Homey.Device {
       this.log(`Result: ${this.ip} ${JSON.stringify(result)}`);
 
       if (!result || !result.properties) {
+        this.setUnavailable();
         this.log(`No properties received`);
         return;
       }
@@ -221,6 +227,7 @@ module.exports = class MyDevice extends Homey.Device {
       };
 
       if (this.currentValues.outputHomePower === undefined || this.currentValues.gridInputPower === undefined) {
+        this.setUnavailable();
         this.log(`No power values received`);
         return;
       }
@@ -259,9 +266,15 @@ module.exports = class MyDevice extends Homey.Device {
       this.setCapabilityValue('meter_power.discharged', this.dischargeMeter);
       this.lastPowerMeterValue = powerPerHour;
       this.lastPowerMeter = Date.now();
-        
+
+      this.setAvailable(); 
     } catch (error) {
       this.log(`Error: ${error}`);
+      if (retry < 1) {
+        await this.pollDevice(retry + 1);
+        return;
+      }
+      this.setUnavailable();
     }
   }
 
