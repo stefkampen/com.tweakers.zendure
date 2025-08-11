@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="95 87 386 362">
+  <title>Simplified Zendure P1 Icon</title>
+  <!-- Styles: black strokes, no fills for transparency -->
+  <g stroke="#000" stroke-width="18" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <!-- Left: cable + adapter body -->
+    <!-- Adapter body -->
+    <rect x="220" y="96" width="96" height="224" rx="48" ry="48"/>
+    <!-- Strain relief / short stem -->
+    <rect x="254" y="320" width="28" height="28" rx="6"/>
+    <!-- Cable going down and left, then up to the connector -->
+    <path d="M268 348              C268 430 168 440 150 440              C120 440 120 408 120 380              L120 156"/>
+    <!-- Small Ethernet-style connector at the top-left -->
+    <rect x="104" y="116" width="32" height="40" rx="6"/>
+    <rect x="112" y="126" width="16" height="16" rx="2" fill="#000"/>
+    <!-- Right: small square wireless unit -->
+    <rect x="344" y="176" width="128" height="128" rx="32" ry="32"/>
+  </g>
+</svg>

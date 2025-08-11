@@ -69,6 +69,7 @@ module.exports = class MyDevice extends Homey.Device {
    */
   async onDeleted() {
     this.log('MyDevice has been deleted');
+    this.stopPolling();
   }
 
   startPolling() {
@@ -76,7 +77,7 @@ module.exports = class MyDevice extends Homey.Device {
     this.pollDevice();
     this.pollInterval = setInterval(async () => {
       await this.pollDevice();
-    }, 3000);
+    }, 1500);
   }
 
   private stopPolling() {
