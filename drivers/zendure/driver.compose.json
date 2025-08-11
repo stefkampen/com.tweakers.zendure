@@ -13,10 +13,10 @@
   ],
   "capabilitiesOptions": {
     "meter_power.charged": {
-      "title": { "en": "Charged Energy" }
+      "title": { "en": "Total charged", "nl": "Totaal opgeladen" }
     },
     "meter_power.discharged": {
-      "title": { "en": "Discharged Energy" }
+      "title": { "en": "Total discharged", "nl": "Totaal ontladen" }
     }
   },
   "platforms": [

@@ -1,0 +1,45 @@
+{
+  "name": {
+    "en": "Smart Meter"
+  },
+  "class": "sensor",
+  "capabilities": ["measure_power","measure_power.p1","measure_power.p2","measure_power.p3"],
+  "capabilitiesOptions": {
+    "measure_power": {
+      "title": { "en": "Total Power", "nl": "Totaal vermogen" }
+    },
+    "measure_power.p1": {
+      "title": { "en": "Phase 1 Power", "nl": "Fase 1 vermogen" }
+    },
+    "measure_power.p2": {
+      "title": { "en": "Phase 2 Power", "nl": "Fase 2 vermogen" }
+    },
+    "measure_power.p3": {
+      "title": { "en": "Phase 3 Power", "nl": "Fase 3 vermogen" }
+    }
+  },
+  "platforms": [
+    "local"
+  ],
+  "connectivity": [
+    "lan"
+  ],
+  "images": {
+    "small": "{{driverAssetsPath}}/images/small.png",
+    "large": "{{driverAssetsPath}}/images/large.png",
+    "xlarge": "{{driverAssetsPath}}/images/xlarge.png"
+  },
+  "discovery": "meter",
+  "pair": [
+    {
+      "id": "list_devices",
+      "template": "list_devices",
+      "navigation": { "next": "add_devices" },
+      "options": { "singular": true }
+    },
+    {
+      "id": "add_devices",
+      "template": "add_devices"
+    }
+  ]
+}

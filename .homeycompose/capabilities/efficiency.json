@@ -1,6 +1,6 @@
 {
     "type": "number",
-    "title": { "en": "Round Trip Efficiency (all time)" },
+    "title": { "en": "RTE (total)", "nl": "RTE (totaal)" },
     "units": { "en": "%" },
     "min": 0,
     "max": 100,
