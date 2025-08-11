@@ -3,14 +3,20 @@
     {
       "id": "set-power",
       "title": {
-        "en": "Set power"
+        "en": "Set power",
+        "nl": "Vermogen instellen"
+      },
+      "titleFormatted": {
+        "en": "Set power to [[power]] watts",
+        "nl": "Vermogen instellen op [[power]] watt"
       },
       "args": [
         {
           "type": "number",
           "name": "power",
           "placeholder": {
-            "en": "800"
+            "en": "800",
+            "nl": "800"
           },
           "min": -2400,
           "max": 2400,
@@ -21,10 +27,8 @@
     {
       "id": "reset-meters",
       "title": {
-        "en": "Reset energy meters"
-      },
-      "titleFormatted": {
-        "en": "Reset charge and discharge meters"
+        "en": "Reset energy meters",
+        "nl": "Meterstanden op 0 zetten"
       }
     }
   ]
