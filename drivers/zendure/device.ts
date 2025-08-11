@@ -60,7 +60,7 @@ module.exports = class MyDevice extends Homey.Device {
     }
 
     // Load persistent meter values from storage
-    this.ip = this.getStoreValue('ip');
+    this.ip = this.getStoreValue('ip') || this.getData().address;
     this.sn = this.getStoreValue('sn');
     this.chargeMeter = this.getStoreValue('chargeMeter') || 0;
     this.dischargeMeter = this.getStoreValue('dischargeMeter') || 0;
