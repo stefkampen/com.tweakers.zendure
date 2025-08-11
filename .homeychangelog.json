@@ -40,5 +40,8 @@
   },
   "1.0.13": {
     "en": "Adding support for Smart Meter devices"
+  },
+  "1.0.14": {
+    "en": "Add option to manually add batteries by ip when not found in network"
   }
 }
