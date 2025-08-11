@@ -28,50 +28,74 @@
   },
   "source": "https://github.com/stefkampen/com.tweakers.zendure",
   "support": "https://gathering.tweakers.net/forum/list_messages/2306860",
-  "flow": {
-    "actions": [
-      {
-        "id": "set-power",
-        "title": {
-          "en": "Set power"
-        },
-        "args": [
-          {
-            "type": "device",
-            "name": "device",
-            "filter": "driver_id=zendure"
-          },
-          {
-            "type": "number",
-            "name": "power",
-            "placeholder": {
-              "en": "800"
-            },
-            "min": -2400,
-            "max": 2400,
-            "step": 1
-          }
-        ]
-      },
-      {
-        "id": "reset-meters",
-        "title": {
-          "en": "Reset energy meters"
-        },
-        "titleFormatted": {
-          "en": "Reset charge and discharge meters"
-        },
-        "args": [
-          {
-            "type": "device",
-            "name": "device",
-            "filter": "driver_id=zendure"
-          }
-        ]
-      }
-    ]
-  },
   "drivers": [
+    {
+      "name": {
+        "en": "Smart Meter"
+      },
+      "class": "sensor",
+      "capabilities": [
+        "measure_power",
+        "measure_power.p1",
+        "measure_power.p2",
+        "measure_power.p3"
+      ],
+      "capabilitiesOptions": {
+        "measure_power": {
+          "title": {
+            "en": "Total Power",
+            "nl": "Totaal vermogen"
+          }
+        },
+        "measure_power.p1": {
+          "title": {
+            "en": "Phase 1 Power",
+            "nl": "Fase 1 vermogen"
+          }
+        },
+        "measure_power.p2": {
+          "title": {
+            "en": "Phase 2 Power",
+            "nl": "Fase 2 vermogen"
+          }
+        },
+        "measure_power.p3": {
+          "title": {
+            "en": "Phase 3 Power",
+            "nl": "Fase 3 vermogen"
+          }
+        }
+      },
+      "platforms": [
+        "local"
+      ],
+      "connectivity": [
+        "lan"
+      ],
+      "images": {
+        "small": "/drivers/meter/assets/images/small.png",
+        "large": "/drivers/meter/assets/images/large.png",
+        "xlarge": "/drivers/meter/assets/images/xlarge.png"
+      },
+      "discovery": "meter",
+      "pair": [
+        {
+          "id": "list_devices",
+          "template": "list_devices",
+          "navigation": {
+            "next": "add_devices"
+          },
+          "options": {
+            "singular": true
+          }
+        },
+        {
+          "id": "add_devices",
+          "template": "add_devices"
+        }
+      ],
+      "id": "meter"
+    },
     {
       "name": {
         "en": "2400AC / 800Pro"
@@ -88,12 +112,14 @@
       "capabilitiesOptions": {
         "meter_power.charged": {
           "title": {
-            "en": "Charged Energy"
+            "en": "Total charged",
+            "nl": "Totaal opgeladen"
           }
         },
         "meter_power.discharged": {
           "title": {
-            "en": "Discharged Energy"
+            "en": "Total discharged",
+            "nl": "Totaal ontladen"
           }
         }
       },
@@ -164,11 +190,55 @@
       "id": "zendure"
     }
   ],
+  "flow": {
+    "actions": [
+      {
+        "id": "set-power",
+        "title": {
+          "en": "Set power"
+        },
+        "args": [
+          {
+            "type": "device",
+            "name": "device",
+            "filter": "driver_id=zendure"
+          },
+          {
+            "type": "number",
+            "name": "power",
+            "placeholder": {
+              "en": "800"
+            },
+            "min": -2400,
+            "max": 2400,
+            "step": 1
+          }
+        ]
+      },
+      {
+        "id": "reset-meters",
+        "title": {
+          "en": "Reset energy meters"
+        },
+        "titleFormatted": {
+          "en": "Reset charge and discharge meters"
+        },
+        "args": [
+          {
+            "type": "device",
+            "name": "device",
+            "filter": "driver_id=zendure"
+          }
+        ]
+      }
+    ]
+  },
   "capabilities": {
     "efficiency": {
       "type": "number",
       "title": {
-        "en": "Round Trip Efficiency (all time)"
+        "en": "RTE (total)",
+        "nl": "RTE (totaal)"
       },
       "units": {
         "en": "%"
@@ -182,6 +252,14 @@
     }
   },
   "discovery": {
+    "meter": {
+      "type": "mdns-sd",
+      "mdns-sd": {
+        "name": "zendure",
+        "protocol": "tcp"
+      },
+      "id": "{{name}}"
+    },
     "zendure": {
       "type": "mdns-sd",
       "mdns-sd": {

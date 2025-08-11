@@ -25,7 +25,6 @@ module.exports = class MyDriver extends Homey.Driver {
         data: {
           id: result.id,
           host: result.host,
-          address: result.address,
         },
       };
     });
