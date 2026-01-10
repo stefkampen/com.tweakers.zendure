@@ -10,7 +10,11 @@ module.exports = class MyDevice extends Homey.Device {
   private dischargeMeter: number = 0;
   private lastPowerMeter?: number;
   private lastPowerMeterValue?: number;
-  private currentValues: { 
+
+  // Track last seen smartMode to avoid redundant writes
+  private lastSmartMode?: number;
+
+  private currentValues: {
     outputHomePower?: number;
     gridInputPower?: number;
     electricLevel?: number;
@@ -19,28 +23,24 @@ module.exports = class MyDevice extends Homey.Device {
   } = {};
 
   onDiscoveryResult(discoveryResult: DiscoveryResultMDNSSD) {
-    // Return a truthy value here if the discovery result matches your device.
     this.log(`Discovery result: ${JSON.stringify(this.getData().id)} ${JSON.stringify(discoveryResult)}`);
     return discoveryResult.id === this.getData().id;
   }
 
   async onDiscoveryAvailable(discoveryResult: DiscoveryResultMDNSSD) {
-    // This method will be executed once when the device has been found (onDiscoveryResult returned true)
     this.ip = discoveryResult.address;
-    // store permanent
     this.setStoreValue('ip', discoveryResult.address);
     this.log(`Discovery available: ${JSON.stringify(discoveryResult)}`);
     this.startPolling();
   }
 
   onDiscoveryAddressChanged(discoveryResult: DiscoveryResultMDNSSD) {
-    // Update your connection details here, reconnect when the device is offline
-   this.ip = discoveryResult.address;
+    this.ip = discoveryResult.address;
   }
 
   onDiscoveryLastSeenChanged(discoveryResult: DiscoveryResultMDNSSD) {
     // When the device is offline, try to reconnect here
-    //this.api.reconnect().catch(this.error); 
+    // this.api.reconnect().catch(this.error);
   }
 
   /**
@@ -69,31 +69,37 @@ module.exports = class MyDevice extends Homey.Device {
     // Set initial capability values from stored data
     this.setCapabilityValue('meter_power.charged', this.chargeMeter);
     this.setCapabilityValue('meter_power.discharged', this.dischargeMeter);
-    this.setCapabilityValue('efficiency',  this.chargeMeter > 0 ? Math.round(this.dischargeMeter / this.chargeMeter * 1000) / 10 : 100);
+    this.setCapabilityValue(
+      'efficiency',
+      this.chargeMeter > 0 ? Math.round(this.dischargeMeter / this.chargeMeter * 1000) / 10 : 100
+    );
 
-    // Register the set-power flow action listener
+    /**
+     * Flow action: set-power
+     * Rule:
+     *  - power == 0  => smartMode = 0
+     *  - power != 0  => smartMode = 1 (both charge/discharge) and keep it 1 for 100->200->300 etc.
+     */
     this.homey.flow.getActionCard('set-power')
       .registerRunListener(async (args, state) => {
-        this.log(`Setting power to: ${args.power}W`);
-        
-        try {
+        const power = Number(args.power);
+        this.log(`Setting power to: ${power}W`);
 
-          let request: { acMode: number, inputLimit?: number, outputLimit?: number } = {
-            acMode: args.power < 0 ? 1 : 2,
-            inputLimit: args.power < 0 ? -args.power : 0,
-            outputLimit: args.power > 0 ? args.power : 0,
+        try {
+          // Non-zero => smartMode ON
+          const request = {
+            smartMode: power === 0 ? 0 : 1,
+            acMode: power < 0 ? 1 : 2,
+            inputLimit: power < 0 ? Math.abs(power) : 0,
+            outputLimit: power > 0 ? power : 0,
           };
 
-          // Implement your power setting logic here
-          this.sendRequest(request);
-          
-          // Update the capability value if needed
-          // this.setCapabilityValue('measure_power', args.power);
-          
-          return true; // Return true if the action was successful
+          await this.sendRequest(request);
+          return true;
+
         } catch (error) {
           this.error('Error setting power:', error);
-          throw error; // Throw error to show failure in flow
+          throw error;
         }
       });
 
@@ -110,10 +116,10 @@ module.exports = class MyDevice extends Homey.Device {
           throw error;
         }
       });
-    
-      if (this.ip) {
-        this.startPolling();
-      }
+
+    if (this.ip) {
+      this.startPolling();
+    }
   }
 
   /**
@@ -128,7 +134,7 @@ module.exports = class MyDevice extends Homey.Device {
       } catch (error) {
         this.error('Error polling device:', error);
       }
-    }, 15000); // 15 seconds
+    }, 15000);
   }
 
   /**
@@ -144,7 +150,7 @@ module.exports = class MyDevice extends Homey.Device {
   /**
    * Set the power output of the device
    */
-  private async sendRequest(properties: any, retry: number = 0) {    
+  private async sendRequest(properties: any, retry: number = 0): Promise<any> {    
     if (!this.ip) {
       throw new Error('Device IP address not available');
     }
@@ -157,29 +163,24 @@ module.exports = class MyDevice extends Homey.Device {
       const fetch = (await import('node-fetch')).default;
       const response = await fetch(endpoint, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        headers: { 'Content-Type': 'application/json' },
         body: reqData,
       });
 
       if (!response.ok) {
         if (retry < 1) {
-          await this.sendRequest(properties, retry + 1);
-          return;
+          return await this.sendRequest(properties, retry + 1);
         }
         throw new Error(`HTTP error! status: ${response.status}`);
       }
 
       const result = await response.json();
-      this.log('Power set successfully:', result);
-      
+      this.log('Request successful:', result);
       return result;
     } catch (error) {
-      this.error(`Error setting power output: ${error}`);
+      this.error(`Error sending request: ${error}`);
       if (retry < 1) {
-        await this.sendRequest(properties, retry + 1);
-        return;
+        return await this.sendRequest(properties, retry + 1);
       }
     }
   }
@@ -193,10 +194,8 @@ module.exports = class MyDevice extends Homey.Device {
     const endpoint = `http://${this.ip}/properties/report`;
     try {
       const fetch = (await import('node-fetch')).default;
-      const response = await fetch(endpoint, {
-        method: 'GET',
-      });
-    
+      const response = await fetch(endpoint, { method: 'GET' });
+
       if (!response.ok) {
         if (retry < 1) {
           await this.pollDevice(retry + 1);
@@ -216,28 +215,60 @@ module.exports = class MyDevice extends Homey.Device {
         return;
       }
 
-      const { outputHomePower, gridInputPower, electricLevel, minSoc, hyperTmp } = result.properties;
+      const {
+        outputHomePower,
+        gridInputPower,
+        electricLevel,
+        minSoc,
+        hyperTmp,
+        smartMode,
+        outputLimit,
+      } = result.properties;
 
       this.currentValues = {
         outputHomePower: outputHomePower > 0 ? outputHomePower + this.getOutputCorrection() : outputHomePower,
         gridInputPower,
         electricLevel,
-        minSoc: minSoc/10,
+        minSoc: minSoc / 10,
         hyperTmp: (hyperTmp - 2731) / 10,
       };
 
+      // Only treat as invalid when truly missing (0 is valid!)
       if (this.currentValues.outputHomePower === undefined || this.currentValues.gridInputPower === undefined) {
         this.setUnavailable();
         this.log(`No power values received`);
         return;
       }
 
+      // Store SN once
       if (!this.sn) {
         this.sn = result.sn;
         this.setStoreValue('sn', result.sn);
-        // prepare device for smart control (to ensure no flash writes)
-        // this.sendRequest({ smartMode: 0 });
       }
+
+      /**
+       * smartMode policy:
+       *  - When device is idle (outputLimit=0 and no import/export): smartMode must be 0
+       *  - When device is active (any import/export OR outputLimit != 0): smartMode must be 1
+       *
+       * This also "catches" HA commands: if HA sets outputLimit=0, Homey will flip smartMode to 0 in max 15s.
+       */
+      const isIdle =
+        (outputLimit === 0 || outputLimit === undefined) &&
+        (outputHomePower === 0 || outputHomePower === undefined) &&
+        (gridInputPower === 0 || gridInputPower === undefined);
+
+      if (isIdle && smartMode !== undefined && smartMode !== 0 && this.lastSmartMode !== 0) {
+        this.log(`Device idle and smartMode=${smartMode}; setting smartMode=0`);
+        await this.sendRequest({ smartMode: 0 });
+      }
+
+      if (!isIdle && smartMode !== undefined && smartMode !== 1 && this.lastSmartMode !== 1) {
+        this.log(`Device active and smartMode=${smartMode}; setting smartMode=1`);
+        await this.sendRequest({ smartMode: 1 });
+      }
+
+      this.lastSmartMode = smartMode;
 
       this.processCurrentValues();
 
@@ -255,10 +286,13 @@ module.exports = class MyDevice extends Homey.Device {
               await this.setStoreValue('dischargeMeter', this.dischargeMeter);
             }
           } catch (error) {
-            this.error('Error storing dischargeMeter:', error);
+            this.error('Error storing meter:', error);
           }
 
-          this.setCapabilityValue('efficiency',  this.chargeMeter > 0 ? Math.round(this.dischargeMeter / this.chargeMeter * 1000) / 10 : 100);
+          this.setCapabilityValue(
+            'efficiency',
+            this.chargeMeter > 0 ? Math.round(this.dischargeMeter / this.chargeMeter * 1000) / 10 : 100
+          );
           this.log(`Power in charge: ${this.chargeMeter} discharge: ${this.dischargeMeter} avg: ${avgPowerPerHour}`);
         }
       }
@@ -321,21 +355,10 @@ module.exports = class MyDevice extends Homey.Device {
     }
   }
 
-  /**
-   * onAdded is called when the user adds the device, called just after pairing.
-   */
   async onAdded() {
     this.log('MyDevice has been added');
   }
 
-  /**
-   * onSettings is called when the user updates the device's settings.
-   * @param {object} event the onSettings event data
-   * @param {object} event.oldSettings The old settings object
-   * @param {object} event.newSettings The new settings object
-   * @param {string[]} event.changedKeys An array of keys changed since the previous version
-   * @returns {Promise<string|void>} return a custom message that will be displayed
-   */
   async onSettings({
     oldSettings,
     newSettings,
@@ -345,13 +368,9 @@ module.exports = class MyDevice extends Homey.Device {
     newSettings: { [key: string]: boolean | string | number | undefined | null };
     changedKeys: string[];
   }): Promise<string | void> {
-    this.log("MyDevice settings where changed");
+    this.log('MyDevice settings were changed');
   }
 
-  /**
-   * Get the current MinSOC correction setting value
-   * @returns {boolean} True if MinSOC correction is enabled, false otherwise
-   */
   private getMinSocCorrectionEnabled(): boolean {
     return this.getSetting('minsoc_correction') || false;
   }
@@ -360,32 +379,18 @@ module.exports = class MyDevice extends Homey.Device {
     return this.getSetting('output_correction') || 0;
   }
 
-  /**
-   * Get the Homey's network IP address
-   * @returns {string} The IP address of the Homey
-   */
   async getHomeyIP() {
     const localAddress = await this.homey.cloud.getLocalAddress();
     const [localIp] = localAddress.split(':');
     return localIp;
   }
 
-  /**
-   * onRenamed is called when the user updates the device's name.
-   * This method can be used this to synchronise the name to the device.
-   * @param {string} name The new name
-   */
   async onRenamed(name: string) {
     this.log('MyDevice was renamed');
   }
 
-  /**
-   * onDeleted is called when the user deleted the device.
-   */
   async onDeleted() {
     this.log('MyDevice has been deleted');
-    
-    // Stop polling when device is deleted
     this.stopPolling();
   }
 

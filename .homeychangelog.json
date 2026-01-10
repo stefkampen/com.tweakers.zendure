@@ -43,5 +43,8 @@
   },
   "1.0.14": {
     "en": "Add option to manually add batteries by ip when not found in network"
+  },
+  "1.0.15": {
+    "en": "Adding smartMode logic to reduce disk load"
   }
 }
