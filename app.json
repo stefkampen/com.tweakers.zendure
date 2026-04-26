@@ -106,6 +106,8 @@
         "measure_power",
         "measure_power.charge",
         "measure_power.discharge",
+        "measure_power.solar",
+        "measure_power.offgrid",
         "measure_temperature",
         "meter_power.charged",
         "meter_power.discharged",
@@ -123,6 +125,20 @@
           "title": {
             "en": "Discharge power",
             "nl": "Ontlaadvermogen"
+          },
+          "insights": true
+        },
+        "measure_power.solar": {
+          "title": {
+            "en": "Solar input power",
+            "nl": "Zonne-invoervermogen"
+          },
+          "insights": true
+        },
+        "measure_power.offgrid": {
+          "title": {
+            "en": "Off-grid output power",
+            "nl": "Off-grid uitgangsvermogen"
           },
           "insights": true
         },
