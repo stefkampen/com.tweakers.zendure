@@ -86,6 +86,32 @@
           "step": 1
         }
       ]
+    },
+    {
+      "id": "set-pass-mode",
+      "title": {
+        "en": "Set bypass mode",
+        "nl": "Bypass-modus instellen"
+      },
+      "titleFormatted": {
+        "en": "Set bypass mode to [[mode]]",
+        "nl": "Bypass-modus op [[mode]]"
+      },
+      "hint": {
+        "en": "Atomic write of passMode. Auto = follow firmware logic, Off = bypass disabled, On = force grid-passthrough (e.g. during low SOC or storm).",
+        "nl": "Schrijft alleen passMode. Auto = firmware bepaalt, Uit = bypass uit, Aan = grid-passthrough forceren (bv. bij lage SOC of onweer)."
+      },
+      "args": [
+        {
+          "type": "dropdown",
+          "name": "mode",
+          "values": [
+            { "id": "0", "label": { "en": "Auto", "nl": "Auto" } },
+            { "id": "1", "label": { "en": "Off", "nl": "Uit" } },
+            { "id": "2", "label": { "en": "On", "nl": "Aan" } }
+          ]
+        }
+      ]
     }
   ]
 }

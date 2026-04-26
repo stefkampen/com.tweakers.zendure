@@ -22,6 +22,7 @@ module.exports = class MyDevice extends Homey.Device {
     electricLevel?: number;
     minSoc?: number;
     hyperTmp?: number;
+    passMode?: number;
   } = {};
 
   onDiscoveryResult(discoveryResult: DiscoveryResultMDNSSD) {
@@ -71,6 +72,9 @@ module.exports = class MyDevice extends Homey.Device {
     }
     if (!this.hasCapability('measure_power.offgrid')) {
       await this.addCapability('measure_power.offgrid');
+    }
+    if (!this.hasCapability('pass_mode')) {
+      await this.addCapability('pass_mode');
     }
 
     // Load persistent meter values from storage
@@ -173,6 +177,27 @@ module.exports = class MyDevice extends Homey.Device {
           return true;
         } catch (error) {
           this.error('Error setting minSoc:', error);
+          throw error;
+        }
+      });
+
+    /**
+     * Flow action: set-pass-mode
+     * Atomic write of passMode. Range 0..2 (0=Auto, 1=Off, 2=On).
+     * Force-bypass use case: route grid through the unit during low SOC
+     * or storm without disabling other modes.
+     */
+    this.homey.flow.getActionCard('set-pass-mode')
+      .registerRunListener(async (args, state) => {
+        const raw = Number(args.mode);
+        const mode = Math.max(0, Math.min(2, Math.round(raw)));
+        this.log(`Setting passMode to: ${mode}`);
+
+        try {
+          await this.sendRequest({ passMode: mode });
+          return true;
+        } catch (error) {
+          this.error('Error setting passMode:', error);
           throw error;
         }
       });
@@ -285,6 +310,7 @@ module.exports = class MyDevice extends Homey.Device {
         hyperTmp,
         smartMode,
         outputLimit,
+        passMode,
       } = result.properties;
 
       this.currentValues = {
@@ -295,6 +321,7 @@ module.exports = class MyDevice extends Homey.Device {
         electricLevel,
         minSoc: minSoc / 10,
         hyperTmp: (hyperTmp - 2731) / 10,
+        passMode,
       };
 
       // Only treat as invalid when truly missing (0 is valid!)
@@ -384,6 +411,7 @@ module.exports = class MyDevice extends Homey.Device {
       this.setCapabilityValue('measure_power.discharge', this.currentValues.outputHomePower || 0).catch(this.error.bind(this));
       this.setCapabilityValue('measure_power.solar', this.currentValues.solarInputPower ?? 0).catch(this.error.bind(this));
       this.setCapabilityValue('measure_power.offgrid', this.currentValues.gridOffPower ?? 0).catch(this.error.bind(this));
+      this.setCapabilityValue('pass_mode', String(this.currentValues.passMode ?? 0)).catch(this.error.bind(this));
       this.setCapabilityValue('measure_temperature', this.currentValues.hyperTmp);
 
       if (this.getMinSocCorrectionEnabled()) {

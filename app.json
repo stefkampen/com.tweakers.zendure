@@ -111,7 +111,8 @@
         "measure_temperature",
         "meter_power.charged",
         "meter_power.discharged",
-        "efficiency"
+        "efficiency",
+        "pass_mode"
       ],
       "capabilitiesOptions": {
         "measure_power.charge": {
@@ -339,6 +340,55 @@
             "step": 1
           }
         ]
+      },
+      {
+        "id": "set-pass-mode",
+        "title": {
+          "en": "Set bypass mode",
+          "nl": "Bypass-modus instellen"
+        },
+        "titleFormatted": {
+          "en": "Set bypass mode to [[mode]]",
+          "nl": "Bypass-modus op [[mode]]"
+        },
+        "hint": {
+          "en": "Atomic write of passMode. Auto = follow firmware logic, Off = bypass disabled, On = force grid-passthrough (e.g. during low SOC or storm).",
+          "nl": "Schrijft alleen passMode. Auto = firmware bepaalt, Uit = bypass uit, Aan = grid-passthrough forceren (bv. bij lage SOC of onweer)."
+        },
+        "args": [
+          {
+            "type": "device",
+            "name": "device",
+            "filter": "driver_id=zendure"
+          },
+          {
+            "type": "dropdown",
+            "name": "mode",
+            "values": [
+              {
+                "id": "0",
+                "label": {
+                  "en": "Auto",
+                  "nl": "Auto"
+                }
+              },
+              {
+                "id": "1",
+                "label": {
+                  "en": "Off",
+                  "nl": "Uit"
+                }
+              },
+              {
+                "id": "2",
+                "label": {
+                  "en": "On",
+                  "nl": "Aan"
+                }
+              }
+            ]
+          }
+        ]
       }
     ]
   },
@@ -358,6 +408,40 @@
       "getable": true,
       "setable": false,
       "insights": true
+    },
+    "pass_mode": {
+      "type": "enum",
+      "title": {
+        "en": "Bypass mode",
+        "nl": "Bypass-modus"
+      },
+      "values": [
+        {
+          "id": "0",
+          "title": {
+            "en": "Auto",
+            "nl": "Auto"
+          }
+        },
+        {
+          "id": "1",
+          "title": {
+            "en": "Off",
+            "nl": "Uit"
+          }
+        },
+        {
+          "id": "2",
+          "title": {
+            "en": "On",
+            "nl": "Aan"
+          }
+        }
+      ],
+      "uiComponent": "picker",
+      "getable": true,
+      "setable": false,
+      "insights": false
     }
   },
   "discovery": {

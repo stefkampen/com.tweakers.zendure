@@ -1,0 +1,13 @@
+{
+  "type": "enum",
+  "title": { "en": "Bypass mode", "nl": "Bypass-modus" },
+  "values": [
+    { "id": "0", "title": { "en": "Auto", "nl": "Auto" } },
+    { "id": "1", "title": { "en": "Off", "nl": "Uit" } },
+    { "id": "2", "title": { "en": "On", "nl": "Aan" } }
+  ],
+  "uiComponent": "picker",
+  "getable": true,
+  "setable": false,
+  "insights": false
+}
