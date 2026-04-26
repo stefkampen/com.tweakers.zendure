@@ -112,6 +112,32 @@
           ]
         }
       ]
+    },
+    {
+      "id": "set-grid-reverse",
+      "title": {
+        "en": "Set grid export mode",
+        "nl": "Netinjectie-modus instellen"
+      },
+      "titleFormatted": {
+        "en": "Set grid export to [[mode]]",
+        "nl": "Netinjectie op [[mode]]"
+      },
+      "hint": {
+        "en": "Atomic write of gridReverse. Disabled = no export, Allow = export enabled, Forbidden = firmware blocks export. Useful for negative-price tariffs (Tibber) where you want to stop exporting temporarily.",
+        "nl": "Schrijft alleen gridReverse. Uit = geen netinjectie, Toestaan = injectie aan, Verboden = firmware blokkeert injectie. Handig voor negatieve prijzen (Tibber) als je tijdelijk niet wil terugleveren."
+      },
+      "args": [
+        {
+          "type": "dropdown",
+          "name": "mode",
+          "values": [
+            { "id": "0", "label": { "en": "Disabled", "nl": "Uitgeschakeld" } },
+            { "id": "1", "label": { "en": "Allow", "nl": "Toestaan" } },
+            { "id": "2", "label": { "en": "Forbidden", "nl": "Verboden" } }
+          ]
+        }
+      ]
     }
   ]
 }

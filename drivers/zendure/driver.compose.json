@@ -14,7 +14,8 @@
     "meter_power.charged",
     "meter_power.discharged",
     "efficiency",
-    "pass_mode"
+    "pass_mode",
+    "grid_reverse"
   ],
   "capabilitiesOptions": {
     "measure_power.charge": {

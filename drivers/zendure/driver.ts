@@ -22,6 +22,11 @@ type SetPassModeArgs = {
   mode: string;
 };
 
+type SetGridReverseArgs = {
+  device: ZendureDevice;
+  mode: string;
+};
+
 module.exports = class MyDriver extends Homey.Driver {
   private manualCandidates: any[] = [];
 
@@ -58,6 +63,12 @@ module.exports = class MyDriver extends Homey.Driver {
     this.homey.flow.getActionCard('set-pass-mode')
       .registerRunListener(async ({ device, mode }: SetPassModeArgs) => {
         await device.setPassMode(Number(mode));
+        return true;
+      });
+
+    this.homey.flow.getActionCard('set-grid-reverse')
+      .registerRunListener(async ({ device, mode }: SetGridReverseArgs) => {
+        await device.setGridReverse(Number(mode));
         return true;
       });
   }

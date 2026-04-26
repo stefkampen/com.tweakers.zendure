@@ -23,6 +23,7 @@ class ZendureDevice extends Homey.Device {
     minSoc?: number;
     hyperTmp?: number;
     passMode?: number;
+    gridReverse?: number;
   } = {};
 
   onDiscoveryResult(discoveryResult: DiscoveryResultMDNSSD) {
@@ -75,6 +76,9 @@ class ZendureDevice extends Homey.Device {
     }
     if (!this.hasCapability('pass_mode')) {
       await this.addCapability('pass_mode');
+    }
+    if (!this.hasCapability('grid_reverse')) {
+      await this.addCapability('grid_reverse');
     }
 
     // Load persistent meter values from storage
@@ -171,6 +175,22 @@ class ZendureDevice extends Homey.Device {
       await this.sendRequest({ passMode: mode });
     } catch (error) {
       this.error('Error setting passMode:', error);
+      throw error;
+    }
+  }
+
+  async setGridReverse(rawMode: number) {
+    if (!Number.isFinite(rawMode)) {
+      throw new Error('Invalid grid export mode');
+    }
+
+    const mode = Math.max(0, Math.min(2, Math.round(rawMode)));
+    this.log(`Setting gridReverse to: ${mode}`);
+
+    try {
+      await this.sendRequest({ gridReverse: mode });
+    } catch (error) {
+      this.error('Error setting gridReverse:', error);
       throw error;
     }
   }
@@ -279,6 +299,7 @@ class ZendureDevice extends Homey.Device {
         smartMode,
         outputLimit,
         passMode,
+        gridReverse,
       } = result.properties;
 
       this.currentValues = {
@@ -290,6 +311,7 @@ class ZendureDevice extends Homey.Device {
         minSoc: minSoc / 10,
         hyperTmp: (hyperTmp - 2731) / 10,
         passMode,
+        gridReverse,
       };
 
       // Only treat as invalid when truly missing (0 is valid!)
@@ -381,6 +403,7 @@ class ZendureDevice extends Homey.Device {
       this.setCapabilityValue('measure_power.solar', this.currentValues.solarInputPower ?? 0).catch(this.error.bind(this));
       this.setCapabilityValue('measure_power.offgrid', this.currentValues.gridOffPower ?? 0).catch(this.error.bind(this));
       this.setCapabilityValue('pass_mode', String(this.currentValues.passMode ?? 0)).catch(this.error.bind(this));
+      this.setCapabilityValue('grid_reverse', String(this.currentValues.gridReverse ?? 0)).catch(this.error.bind(this));
       this.setCapabilityValue('measure_temperature', this.currentValues.hyperTmp);
 
       if (this.getMinSocCorrectionEnabled()) {

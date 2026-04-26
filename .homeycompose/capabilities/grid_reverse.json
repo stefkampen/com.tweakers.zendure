@@ -1,0 +1,13 @@
+{
+  "type": "enum",
+  "title": { "en": "Grid export", "nl": "Netinjectie" },
+  "values": [
+    { "id": "0", "title": { "en": "Disabled", "nl": "Uitgeschakeld" } },
+    { "id": "1", "title": { "en": "Allow", "nl": "Toestaan" } },
+    { "id": "2", "title": { "en": "Forbidden", "nl": "Verboden" } }
+  ],
+  "uiComponent": "picker",
+  "getable": true,
+  "setable": false,
+  "insights": false
+}
