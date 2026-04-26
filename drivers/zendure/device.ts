@@ -58,6 +58,12 @@ module.exports = class MyDevice extends Homey.Device {
     if (!this.hasCapability('efficiency')) {
       await this.addCapability('efficiency');
     }
+    if (!this.hasCapability('measure_power.charge')) {
+      await this.addCapability('measure_power.charge');
+    }
+    if (!this.hasCapability('measure_power.discharge')) {
+      await this.addCapability('measure_power.discharge');
+    }
 
     // Load persistent meter values from storage
     this.ip = this.getStoreValue('ip') || this.getData().address;
@@ -107,12 +113,58 @@ module.exports = class MyDevice extends Homey.Device {
     this.homey.flow.getActionCard('reset-meters')
       .registerRunListener(async (args, state) => {
         this.log('Resetting charge and discharge meters');
-        
+
         try {
           await this.resetMeters();
           return true;
         } catch (error) {
           this.error('Error resetting meters:', error);
+          throw error;
+        }
+      });
+
+    /**
+     * Flow action: set-output-limit
+     * Atomic write of outputLimit only. Does NOT touch inputLimit/smartMode/acMode.
+     * Use case: block Zendure discharge while EV charging (set limit=0) without
+     * disabling charge-from-solar pathway.
+     * Range 0..2400W enforced by flow-arg validation; defensive clamp here too.
+     */
+    this.homey.flow.getActionCard('set-output-limit')
+      .registerRunListener(async (args, state) => {
+        const raw = Number(args.limit);
+        const limit = Math.max(0, Math.min(2400, Math.round(raw)));
+        this.log(`Setting output limit to: ${limit}W (raw=${raw})`);
+
+        try {
+          await this.sendRequest({ outputLimit: limit });
+          return true;
+        } catch (error) {
+          this.error('Error setting output limit:', error);
+          throw error;
+        }
+      });
+
+    /**
+     * Flow action: set-min-soc
+     * Atomic write of minSoc only. HTTP-API expects raw value = percent * 10
+     * (confirmed via pollDevice() reading minSoc/10 on line ~232).
+     * Range 5..50% enforced by flow-arg validation; defensive clamp here too.
+     * Use case: sticky floor against Zenki discharge (alternative to set-output-limit
+     * loop). Per Zendure-HA #838, SoC-limit reverts take 'few minutes'.
+     */
+    this.homey.flow.getActionCard('set-min-soc')
+      .registerRunListener(async (args, state) => {
+        const raw = Number(args.percent);
+        const percent = Math.max(5, Math.min(50, Math.round(raw)));
+        const rawValue = percent * 10;
+        this.log(`Setting minSoc to: ${percent}% (raw=${rawValue})`);
+
+        try {
+          await this.sendRequest({ minSoc: rawValue });
+          return true;
+        } catch (error) {
+          this.error('Error setting minSoc:', error);
           throw error;
         }
       });
@@ -316,6 +368,8 @@ module.exports = class MyDevice extends Homey.Device {
     if (this.currentValues.outputHomePower !== undefined && this.currentValues.gridInputPower !== undefined && this.currentValues.electricLevel !== undefined && this.currentValues.minSoc !== undefined && this.currentValues.hyperTmp !== undefined)  {
       this.log(`Power: ${this.currentValues.outputHomePower} ${this.currentValues.gridInputPower} ${this.currentValues.electricLevel} ${this.currentValues.minSoc}`);
       this.setCapabilityValue('measure_power', this.currentValues.gridInputPower || -this.currentValues.outputHomePower);
+      this.setCapabilityValue('measure_power.charge', this.currentValues.gridInputPower || 0).catch(this.error.bind(this));
+      this.setCapabilityValue('measure_power.discharge', this.currentValues.outputHomePower || 0).catch(this.error.bind(this));
       this.setCapabilityValue('measure_temperature', this.currentValues.hyperTmp);
 
       if (this.getMinSocCorrectionEnabled()) {
