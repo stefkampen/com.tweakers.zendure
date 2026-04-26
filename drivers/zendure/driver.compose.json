@@ -6,12 +6,22 @@
   "capabilities": [
     "measure_battery",
     "measure_power",
+    "measure_power.charge",
+    "measure_power.discharge",
     "measure_temperature",
     "meter_power.charged",
     "meter_power.discharged",
     "efficiency"
   ],
   "capabilitiesOptions": {
+    "measure_power.charge": {
+      "title": { "en": "Charge power", "nl": "Laadvermogen" },
+      "insights": true
+    },
+    "measure_power.discharge": {
+      "title": { "en": "Discharge power", "nl": "Ontlaadvermogen" },
+      "insights": true
+    },
     "meter_power.charged": {
       "title": { "en": "Total charged", "nl": "Totaal opgeladen" }
     },

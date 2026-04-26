@@ -7,6 +7,16 @@ type SetPowerArgs = {
   power: number;
 };
 
+type SetOutputLimitArgs = {
+  device: ZendureDevice;
+  limit: number;
+};
+
+type SetMinSocArgs = {
+  device: ZendureDevice;
+  percent: number;
+};
+
 module.exports = class MyDriver extends Homey.Driver {
   private manualCandidates: any[] = [];
 
@@ -25,6 +35,18 @@ module.exports = class MyDriver extends Homey.Driver {
     this.homey.flow.getActionCard('reset-meters')
       .registerRunListener(async ({ device }: { device: ZendureDevice }) => {
         await device.resetMeters();
+        return true;
+      });
+
+    this.homey.flow.getActionCard('set-output-limit')
+      .registerRunListener(async ({ device, limit }: SetOutputLimitArgs) => {
+        await device.setOutputLimit(limit);
+        return true;
+      });
+
+    this.homey.flow.getActionCard('set-min-soc')
+      .registerRunListener(async ({ device, percent }: SetMinSocArgs) => {
+        await device.setMinSoc(percent);
         return true;
       });
   }

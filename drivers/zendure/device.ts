@@ -58,6 +58,12 @@ class ZendureDevice extends Homey.Device {
     if (!this.hasCapability('efficiency')) {
       await this.addCapability('efficiency');
     }
+    if (!this.hasCapability('measure_power.charge')) {
+      await this.addCapability('measure_power.charge');
+    }
+    if (!this.hasCapability('measure_power.discharge')) {
+      await this.addCapability('measure_power.discharge');
+    }
 
     // Load persistent meter values from storage
     this.ip = this.getStoreValue('ip') || this.getData().address;
@@ -104,6 +110,39 @@ class ZendureDevice extends Homey.Device {
       await this.sendRequest(request);
     } catch (error) {
       this.error('Error setting power:', error);
+      throw error;
+    }
+  }
+
+  async setOutputLimit(rawLimit: number) {
+    if (!Number.isFinite(rawLimit)) {
+      throw new Error('Invalid output limit');
+    }
+
+    const limit = Math.max(0, Math.min(2400, Math.round(rawLimit)));
+    this.log(`Setting output limit to: ${limit}W (raw=${rawLimit})`);
+
+    try {
+      await this.sendRequest({ outputLimit: limit });
+    } catch (error) {
+      this.error('Error setting output limit:', error);
+      throw error;
+    }
+  }
+
+  async setMinSoc(rawPercent: number) {
+    if (!Number.isFinite(rawPercent)) {
+      throw new Error('Invalid minimum SOC');
+    }
+
+    const percent = Math.max(5, Math.min(50, Math.round(rawPercent)));
+    const rawValue = percent * 10;
+    this.log(`Setting minSoc to: ${percent}% (raw=${rawValue})`);
+
+    try {
+      await this.sendRequest({ minSoc: rawValue });
+    } catch (error) {
+      this.error('Error setting minSoc:', error);
       throw error;
     }
   }
@@ -301,7 +340,10 @@ class ZendureDevice extends Homey.Device {
   private processCurrentValues() {
     if (this.currentValues.outputHomePower !== undefined && this.currentValues.gridInputPower !== undefined && this.currentValues.electricLevel !== undefined && this.currentValues.minSoc !== undefined && this.currentValues.hyperTmp !== undefined)  {
       this.log(`Power: ${this.currentValues.outputHomePower} ${this.currentValues.gridInputPower} ${this.currentValues.electricLevel} ${this.currentValues.minSoc}`);
-      this.setCapabilityValue('measure_power', this.currentValues.gridInputPower || -this.currentValues.outputHomePower);
+      this.setCapabilityValue('measure_power', this.currentValues.gridInputPower || -this.currentValues.outputHomePower)
+        .catch(this.error.bind(this));
+      this.setCapabilityValue('measure_power.charge', this.currentValues.gridInputPower || 0).catch(this.error.bind(this));
+      this.setCapabilityValue('measure_power.discharge', this.currentValues.outputHomePower || 0).catch(this.error.bind(this));
       this.setCapabilityValue('measure_temperature', this.currentValues.hyperTmp);
 
       if (this.getMinSocCorrectionEnabled()) {

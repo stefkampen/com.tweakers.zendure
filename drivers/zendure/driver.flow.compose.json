@@ -30,6 +30,62 @@
         "en": "Reset energy meters",
         "nl": "Meterstanden op 0 zetten"
       }
+    },
+    {
+      "id": "set-output-limit",
+      "title": {
+        "en": "Set output limit (discharge cap)",
+        "nl": "Ontlaadlimiet instellen"
+      },
+      "titleFormatted": {
+        "en": "Cap discharge at [[limit]] W (0 = block discharge)",
+        "nl": "Ontladen begrenzen op [[limit]] W (0 = blokkeer ontladen)"
+      },
+      "hint": {
+        "en": "Atomic write of outputLimit only. Does not touch inputLimit, smartMode or acMode. Use 0 to block discharge while allowing solar/grid charging.",
+        "nl": "Schrijft alleen outputLimit. Raakt inputLimit, smartMode en acMode niet aan. Gebruik 0 om ontladen te blokkeren terwijl zon/grid laden mag."
+      },
+      "args": [
+        {
+          "type": "number",
+          "name": "limit",
+          "placeholder": {
+            "en": "0",
+            "nl": "0"
+          },
+          "min": 0,
+          "max": 2400,
+          "step": 1
+        }
+      ]
+    },
+    {
+      "id": "set-min-soc",
+      "title": {
+        "en": "Set minimum SOC (sticky floor)",
+        "nl": "Minimum-SOC instellen (sticky vloer)"
+      },
+      "titleFormatted": {
+        "en": "Set min SOC to [[percent]]% (Zenki refuses to discharge below)",
+        "nl": "Minimum-SOC op [[percent]]% (Zenki ontlaadt niet dieper)"
+      },
+      "hint": {
+        "en": "Atomic write of minSoc only. Use as alternative discharge-blocker: set min-SOC to current SOC and Zenki refuses to discharge further. Reverts in HA take 'few minutes' (per Zendure-HA #838). Range clamped to 5-50% for battery health.",
+        "nl": "Schrijft alleen minSoc. Alternatief voor blokkade: zet min-SOC op huidige SOC en Zenki ontlaadt niet verder. Revert in HA duurt 'enkele minuten' (per Zendure-HA #838). Range geklemd op 5-50% voor batterijgezondheid."
+      },
+      "args": [
+        {
+          "type": "number",
+          "name": "percent",
+          "placeholder": {
+            "en": "20",
+            "nl": "20"
+          },
+          "min": 5,
+          "max": 50,
+          "step": 1
+        }
+      ]
     }
   ]
 }
