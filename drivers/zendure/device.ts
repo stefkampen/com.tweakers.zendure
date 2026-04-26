@@ -17,6 +17,8 @@ class ZendureDevice extends Homey.Device {
   private currentValues: {
     outputHomePower?: number;
     gridInputPower?: number;
+    solarInputPower?: number;
+    gridOffPower?: number;
     electricLevel?: number;
     minSoc?: number;
     hyperTmp?: number;
@@ -63,6 +65,12 @@ class ZendureDevice extends Homey.Device {
     }
     if (!this.hasCapability('measure_power.discharge')) {
       await this.addCapability('measure_power.discharge');
+    }
+    if (!this.hasCapability('measure_power.solar')) {
+      await this.addCapability('measure_power.solar');
+    }
+    if (!this.hasCapability('measure_power.offgrid')) {
+      await this.addCapability('measure_power.offgrid');
     }
 
     // Load persistent meter values from storage
@@ -243,6 +251,8 @@ class ZendureDevice extends Homey.Device {
       const {
         outputHomePower,
         gridInputPower,
+        solarInputPower,
+        gridOffPower,
         electricLevel,
         minSoc,
         hyperTmp,
@@ -253,6 +263,8 @@ class ZendureDevice extends Homey.Device {
       this.currentValues = {
         outputHomePower: outputHomePower > 0 ? outputHomePower + this.getOutputCorrection() : outputHomePower,
         gridInputPower,
+        solarInputPower,
+        gridOffPower,
         electricLevel,
         minSoc: minSoc / 10,
         hyperTmp: (hyperTmp - 2731) / 10,
@@ -344,6 +356,8 @@ class ZendureDevice extends Homey.Device {
         .catch(this.error.bind(this));
       this.setCapabilityValue('measure_power.charge', this.currentValues.gridInputPower || 0).catch(this.error.bind(this));
       this.setCapabilityValue('measure_power.discharge', this.currentValues.outputHomePower || 0).catch(this.error.bind(this));
+      this.setCapabilityValue('measure_power.solar', this.currentValues.solarInputPower ?? 0).catch(this.error.bind(this));
+      this.setCapabilityValue('measure_power.offgrid', this.currentValues.gridOffPower ?? 0).catch(this.error.bind(this));
       this.setCapabilityValue('measure_temperature', this.currentValues.hyperTmp);
 
       if (this.getMinSocCorrectionEnabled()) {
