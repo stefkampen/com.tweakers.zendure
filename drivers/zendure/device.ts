@@ -1,6 +1,6 @@
 import Homey, { DiscoveryResultMDNSSD } from 'homey';
 
-module.exports = class MyDevice extends Homey.Device {
+class ZendureDevice extends Homey.Device {
 
   private pollInterval?: NodeJS.Timeout;
   private ip?: string;
@@ -92,118 +92,86 @@ module.exports = class MyDevice extends Homey.Device {
       this.chargeMeter > 0 ? Math.round(this.dischargeMeter / this.chargeMeter * 1000) / 10 : 100
     );
 
-    /**
-     * Flow action: set-power
-     * Rule:
-     *  - power == 0  => smartMode = 0
-     *  - power != 0  => smartMode = 1 (both charge/discharge) and keep it 1 for 100->200->300 etc.
-     */
-    this.homey.flow.getActionCard('set-power')
-      .registerRunListener(async (args, state) => {
-        const power = Number(args.power);
-        this.log(`Setting power to: ${power}W`);
-
-        try {
-          // Non-zero => smartMode ON
-          const request = {
-            smartMode: power === 0 ? 0 : 1,
-            acMode: power < 0 ? 1 : 2,
-            inputLimit: power < 0 ? Math.abs(power) : 0,
-            outputLimit: power > 0 ? power : 0,
-          };
-
-          await this.sendRequest(request);
-          return true;
-
-        } catch (error) {
-          this.error('Error setting power:', error);
-          throw error;
-        }
-      });
-
-    // Register the reset-meters flow action listener
-    this.homey.flow.getActionCard('reset-meters')
-      .registerRunListener(async (args, state) => {
-        this.log('Resetting charge and discharge meters');
-
-        try {
-          await this.resetMeters();
-          return true;
-        } catch (error) {
-          this.error('Error resetting meters:', error);
-          throw error;
-        }
-      });
-
-    /**
-     * Flow action: set-output-limit
-     * Atomic write of outputLimit only. Does NOT touch inputLimit/smartMode/acMode.
-     * Use case: block Zendure discharge while EV charging (set limit=0) without
-     * disabling charge-from-solar pathway.
-     * Range 0..2400W enforced by flow-arg validation; defensive clamp here too.
-     */
-    this.homey.flow.getActionCard('set-output-limit')
-      .registerRunListener(async (args, state) => {
-        const raw = Number(args.limit);
-        const limit = Math.max(0, Math.min(2400, Math.round(raw)));
-        this.log(`Setting output limit to: ${limit}W (raw=${raw})`);
-
-        try {
-          await this.sendRequest({ outputLimit: limit });
-          return true;
-        } catch (error) {
-          this.error('Error setting output limit:', error);
-          throw error;
-        }
-      });
-
-    /**
-     * Flow action: set-min-soc
-     * Atomic write of minSoc only. HTTP-API expects raw value = percent * 10
-     * (confirmed via pollDevice() reading minSoc/10 on line ~232).
-     * Range 5..50% enforced by flow-arg validation; defensive clamp here too.
-     * Use case: sticky floor against Zenki discharge (alternative to set-output-limit
-     * loop). Per Zendure-HA #838, SoC-limit reverts take 'few minutes'.
-     */
-    this.homey.flow.getActionCard('set-min-soc')
-      .registerRunListener(async (args, state) => {
-        const raw = Number(args.percent);
-        const percent = Math.max(5, Math.min(50, Math.round(raw)));
-        const rawValue = percent * 10;
-        this.log(`Setting minSoc to: ${percent}% (raw=${rawValue})`);
-
-        try {
-          await this.sendRequest({ minSoc: rawValue });
-          return true;
-        } catch (error) {
-          this.error('Error setting minSoc:', error);
-          throw error;
-        }
-      });
-
-    /**
-     * Flow action: set-pass-mode
-     * Atomic write of passMode. Range 0..2 (0=Auto, 1=Off, 2=On).
-     * Force-bypass use case: route grid through the unit during low SOC
-     * or storm without disabling other modes.
-     */
-    this.homey.flow.getActionCard('set-pass-mode')
-      .registerRunListener(async (args, state) => {
-        const raw = Number(args.mode);
-        const mode = Math.max(0, Math.min(2, Math.round(raw)));
-        this.log(`Setting passMode to: ${mode}`);
-
-        try {
-          await this.sendRequest({ passMode: mode });
-          return true;
-        } catch (error) {
-          this.error('Error setting passMode:', error);
-          throw error;
-        }
-      });
-
     if (this.ip) {
       this.startPolling();
+    }
+  }
+
+  /**
+   * Flow action: set-power
+   * Rule:
+   *  - power == 0  => smartMode = 0
+   *  - power != 0  => smartMode = 1 (both charge/discharge) and keep it 1 for 100->200->300 etc.
+   */
+  async setPower(power: number) {
+    if (!Number.isFinite(power)) {
+      throw new Error('Invalid power value');
+    }
+
+    this.log(`Setting power to: ${power}W`);
+
+    try {
+      // Non-zero => smartMode ON
+      const request = {
+        smartMode: power === 0 ? 0 : 1,
+        acMode: power < 0 ? 1 : 2,
+        inputLimit: power < 0 ? Math.abs(power) : 0,
+        outputLimit: power > 0 ? power : 0,
+      };
+
+      await this.sendRequest(request);
+    } catch (error) {
+      this.error('Error setting power:', error);
+      throw error;
+    }
+  }
+
+  async setOutputLimit(rawLimit: number) {
+    if (!Number.isFinite(rawLimit)) {
+      throw new Error('Invalid output limit');
+    }
+
+    const limit = Math.max(0, Math.min(2400, Math.round(rawLimit)));
+    this.log(`Setting output limit to: ${limit}W (raw=${rawLimit})`);
+
+    try {
+      await this.sendRequest({ outputLimit: limit });
+    } catch (error) {
+      this.error('Error setting output limit:', error);
+      throw error;
+    }
+  }
+
+  async setMinSoc(rawPercent: number) {
+    if (!Number.isFinite(rawPercent)) {
+      throw new Error('Invalid minimum SOC');
+    }
+
+    const percent = Math.max(5, Math.min(50, Math.round(rawPercent)));
+    const rawValue = percent * 10;
+    this.log(`Setting minSoc to: ${percent}% (raw=${rawValue})`);
+
+    try {
+      await this.sendRequest({ minSoc: rawValue });
+    } catch (error) {
+      this.error('Error setting minSoc:', error);
+      throw error;
+    }
+  }
+
+  async setPassMode(rawMode: number) {
+    if (!Number.isFinite(rawMode)) {
+      throw new Error('Invalid bypass mode');
+    }
+
+    const mode = Math.max(0, Math.min(2, Math.round(rawMode)));
+    this.log(`Setting passMode to: ${mode}`);
+
+    try {
+      await this.sendRequest({ passMode: mode });
+    } catch (error) {
+      this.error('Error setting passMode:', error);
+      throw error;
     }
   }
 
@@ -406,7 +374,8 @@ module.exports = class MyDevice extends Homey.Device {
   private processCurrentValues() {
     if (this.currentValues.outputHomePower !== undefined && this.currentValues.gridInputPower !== undefined && this.currentValues.electricLevel !== undefined && this.currentValues.minSoc !== undefined && this.currentValues.hyperTmp !== undefined)  {
       this.log(`Power: ${this.currentValues.outputHomePower} ${this.currentValues.gridInputPower} ${this.currentValues.electricLevel} ${this.currentValues.minSoc}`);
-      this.setCapabilityValue('measure_power', this.currentValues.gridInputPower || -this.currentValues.outputHomePower);
+      this.setCapabilityValue('measure_power', this.currentValues.gridInputPower || -this.currentValues.outputHomePower)
+        .catch(this.error.bind(this));
       this.setCapabilityValue('measure_power.charge', this.currentValues.gridInputPower || 0).catch(this.error.bind(this));
       this.setCapabilityValue('measure_power.discharge', this.currentValues.outputHomePower || 0).catch(this.error.bind(this));
       this.setCapabilityValue('measure_power.solar', this.currentValues.solarInputPower ?? 0).catch(this.error.bind(this));
@@ -490,4 +459,6 @@ module.exports = class MyDevice extends Homey.Device {
     this.stopPolling();
   }
 
-};
+}
+
+export = ZendureDevice;

@@ -1,5 +1,26 @@
 import Homey, { DiscoveryResultMDNSSD } from 'homey';
 import PairSession from 'homey/lib/PairSession';
+import type ZendureDevice = require('./device');
+
+type SetPowerArgs = {
+  device: ZendureDevice;
+  power: number;
+};
+
+type SetOutputLimitArgs = {
+  device: ZendureDevice;
+  limit: number;
+};
+
+type SetMinSocArgs = {
+  device: ZendureDevice;
+  percent: number;
+};
+
+type SetPassModeArgs = {
+  device: ZendureDevice;
+  mode: string;
+};
 
 module.exports = class MyDriver extends Homey.Driver {
   private manualCandidates: any[] = [];
@@ -9,6 +30,36 @@ module.exports = class MyDriver extends Homey.Driver {
    */
   async onInit() {
     this.log('MyDriver has been initialized');
+
+    this.homey.flow.getActionCard('set-power')
+      .registerRunListener(async ({ device, power }: SetPowerArgs) => {
+        await device.setPower(power);
+        return true;
+      });
+
+    this.homey.flow.getActionCard('reset-meters')
+      .registerRunListener(async ({ device }: { device: ZendureDevice }) => {
+        await device.resetMeters();
+        return true;
+      });
+
+    this.homey.flow.getActionCard('set-output-limit')
+      .registerRunListener(async ({ device, limit }: SetOutputLimitArgs) => {
+        await device.setOutputLimit(limit);
+        return true;
+      });
+
+    this.homey.flow.getActionCard('set-min-soc')
+      .registerRunListener(async ({ device, percent }: SetMinSocArgs) => {
+        await device.setMinSoc(percent);
+        return true;
+      });
+
+    this.homey.flow.getActionCard('set-pass-mode')
+      .registerRunListener(async ({ device, mode }: SetPassModeArgs) => {
+        await device.setPassMode(Number(mode));
+        return true;
+      });
   }
 
   getFilteredDevices() {

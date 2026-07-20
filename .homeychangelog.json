@@ -46,5 +46,8 @@
   },
   "1.0.15": {
     "en": "Adding smartMode logic to reduce disk load"
+  },
+  "1.0.16": {
+    "en": "Fix multi device flow support & improve stability"
   }
 }

@@ -1,10 +1,10 @@
-import { count } from 'console';
 import Homey, { DiscoveryResultMDNSSD } from 'homey';
 
 module.exports = class MyDevice extends Homey.Device {
   private ip?: string;
   private pollInterval?: NodeJS.Timeout;
   private failureCount: number = 0;
+
   /**
    * onInit is called when the device is initialized.
    */
@@ -23,7 +23,7 @@ module.exports = class MyDevice extends Homey.Device {
 
   async onDiscoveryAvailable(discoveryResult: DiscoveryResultMDNSSD) {
     this.ip = discoveryResult.address;
-    this.setStoreValue('ip', discoveryResult.address);
+    await this.setStoreValue('ip', discoveryResult.address);
     this.log(`Discovery available: ${JSON.stringify(discoveryResult)}`);
     this.startPolling();
   }
@@ -52,7 +52,7 @@ module.exports = class MyDevice extends Homey.Device {
     newSettings: { [key: string]: boolean | string | number | undefined | null };
     changedKeys: string[];
   }): Promise<string | void> {
-    this.log("MyDevice settings where changed");
+    this.log('MyDevice settings where changed');
   }
 
   /**
@@ -74,9 +74,13 @@ module.exports = class MyDevice extends Homey.Device {
 
   startPolling() {
     if (this.pollInterval) return;
-    this.pollDevice();
-    this.pollInterval = setInterval(async () => {
-      await this.pollDevice();
+    this.pollDevice().catch((error) => {
+      this.error('Unhandled polling error:', error);
+    });
+    this.pollInterval = setInterval(() => {
+      this.pollDevice().catch((error) => {
+        this.error('Unhandled polling error:', error);
+      });
     }, 1500);
   }
 
@@ -92,25 +96,32 @@ module.exports = class MyDevice extends Homey.Device {
       throw new Error('Device IP address not available');
     }
     const endpoint = `http://${this.ip}/properties/report`;
-    
+
     try {
       const fetch = (await import('node-fetch')).default;
-      const response = await fetch(endpoint, { method: 'GET'});
+      const response = await fetch(endpoint, { method: 'GET' });
       const data = await response.json() as any;
       this.log(`Response: ${JSON.stringify(data)}`);
-      this.setCapabilityValue('measure_power', data.total_power);
-      this.setCapabilityValue('measure_power.p1', data.a_aprt_power);
-      this.setCapabilityValue('measure_power.p2', data.b_aprt_power);
-      this.setCapabilityValue('measure_power.p3', data.c_aprt_power);
+      if (Number.isFinite(data.total_power)) {
+        await this.setCapabilityValue('measure_power', data.total_power);
+      }
+      if (Number.isFinite(data.a_aprt_power)) {
+        await this.setCapabilityValue('measure_power.p1', data.a_aprt_power);
+      }
+      if (Number.isFinite(data.b_aprt_power)) {
+        await this.setCapabilityValue('measure_power.p2', data.b_aprt_power);
+      }
+      if (Number.isFinite(data.c_aprt_power)) {
+        await this.setCapabilityValue('measure_power.p3', data.c_aprt_power);
+      }
       this.failureCount = 0;
-      this.setAvailable();
+      await this.setAvailable();
     } catch (error) {
       this.error('Error polling device:', error);
       this.failureCount++;
       if (this.failureCount > 3) {
-        this.setUnavailable();
+        await this.setUnavailable();
       }
     }
   }
-
 };
