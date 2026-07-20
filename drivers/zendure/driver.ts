@@ -17,6 +17,11 @@ type SetMinSocArgs = {
   percent: number;
 };
 
+type SetPassModeArgs = {
+  device: ZendureDevice;
+  mode: string;
+};
+
 module.exports = class MyDriver extends Homey.Driver {
   private manualCandidates: any[] = [];
 
@@ -47,6 +52,12 @@ module.exports = class MyDriver extends Homey.Driver {
     this.homey.flow.getActionCard('set-min-soc')
       .registerRunListener(async ({ device, percent }: SetMinSocArgs) => {
         await device.setMinSoc(percent);
+        return true;
+      });
+
+    this.homey.flow.getActionCard('set-pass-mode')
+      .registerRunListener(async ({ device, mode }: SetPassModeArgs) => {
+        await device.setPassMode(Number(mode));
         return true;
       });
   }

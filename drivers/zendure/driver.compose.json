@@ -13,7 +13,8 @@
     "measure_temperature",
     "meter_power.charged",
     "meter_power.discharged",
-    "efficiency"
+    "efficiency",
+    "pass_mode"
   ],
   "capabilitiesOptions": {
     "measure_power.charge": {

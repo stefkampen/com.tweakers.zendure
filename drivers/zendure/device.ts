@@ -22,6 +22,7 @@ class ZendureDevice extends Homey.Device {
     electricLevel?: number;
     minSoc?: number;
     hyperTmp?: number;
+    passMode?: number;
   } = {};
 
   onDiscoveryResult(discoveryResult: DiscoveryResultMDNSSD) {
@@ -71,6 +72,9 @@ class ZendureDevice extends Homey.Device {
     }
     if (!this.hasCapability('measure_power.offgrid')) {
       await this.addCapability('measure_power.offgrid');
+    }
+    if (!this.hasCapability('pass_mode')) {
+      await this.addCapability('pass_mode');
     }
 
     // Load persistent meter values from storage
@@ -151,6 +155,22 @@ class ZendureDevice extends Homey.Device {
       await this.sendRequest({ minSoc: rawValue });
     } catch (error) {
       this.error('Error setting minSoc:', error);
+      throw error;
+    }
+  }
+
+  async setPassMode(rawMode: number) {
+    if (!Number.isFinite(rawMode)) {
+      throw new Error('Invalid bypass mode');
+    }
+
+    const mode = Math.max(0, Math.min(2, Math.round(rawMode)));
+    this.log(`Setting passMode to: ${mode}`);
+
+    try {
+      await this.sendRequest({ passMode: mode });
+    } catch (error) {
+      this.error('Error setting passMode:', error);
       throw error;
     }
   }
@@ -258,6 +278,7 @@ class ZendureDevice extends Homey.Device {
         hyperTmp,
         smartMode,
         outputLimit,
+        passMode,
       } = result.properties;
 
       this.currentValues = {
@@ -268,6 +289,7 @@ class ZendureDevice extends Homey.Device {
         electricLevel,
         minSoc: minSoc / 10,
         hyperTmp: (hyperTmp - 2731) / 10,
+        passMode,
       };
 
       // Only treat as invalid when truly missing (0 is valid!)
@@ -358,6 +380,7 @@ class ZendureDevice extends Homey.Device {
       this.setCapabilityValue('measure_power.discharge', this.currentValues.outputHomePower || 0).catch(this.error.bind(this));
       this.setCapabilityValue('measure_power.solar', this.currentValues.solarInputPower ?? 0).catch(this.error.bind(this));
       this.setCapabilityValue('measure_power.offgrid', this.currentValues.gridOffPower ?? 0).catch(this.error.bind(this));
+      this.setCapabilityValue('pass_mode', String(this.currentValues.passMode ?? 0)).catch(this.error.bind(this));
       this.setCapabilityValue('measure_temperature', this.currentValues.hyperTmp);
 
       if (this.getMinSocCorrectionEnabled()) {
