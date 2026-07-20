@@ -1,5 +1,11 @@
 import Homey, { DiscoveryResultMDNSSD } from 'homey';
 import PairSession from 'homey/lib/PairSession';
+import type ZendureDevice = require('./device');
+
+type SetPowerArgs = {
+  device: ZendureDevice;
+  power: number;
+};
 
 module.exports = class MyDriver extends Homey.Driver {
   private manualCandidates: any[] = [];
@@ -9,6 +15,18 @@ module.exports = class MyDriver extends Homey.Driver {
    */
   async onInit() {
     this.log('MyDriver has been initialized');
+
+    this.homey.flow.getActionCard('set-power')
+      .registerRunListener(async ({ device, power }: SetPowerArgs) => {
+        await device.setPower(power);
+        return true;
+      });
+
+    this.homey.flow.getActionCard('reset-meters')
+      .registerRunListener(async ({ device }: { device: ZendureDevice }) => {
+        await device.resetMeters();
+        return true;
+      });
   }
 
   getFilteredDevices() {

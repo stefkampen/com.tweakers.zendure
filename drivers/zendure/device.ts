@@ -1,6 +1,6 @@
 import Homey, { DiscoveryResultMDNSSD } from 'homey';
 
-module.exports = class MyDevice extends Homey.Device {
+class ZendureDevice extends Homey.Device {
 
   private pollInterval?: NodeJS.Timeout;
   private ip?: string;
@@ -74,51 +74,37 @@ module.exports = class MyDevice extends Homey.Device {
       this.chargeMeter > 0 ? Math.round(this.dischargeMeter / this.chargeMeter * 1000) / 10 : 100
     );
 
-    /**
-     * Flow action: set-power
-     * Rule:
-     *  - power == 0  => smartMode = 0
-     *  - power != 0  => smartMode = 1 (both charge/discharge) and keep it 1 for 100->200->300 etc.
-     */
-    this.homey.flow.getActionCard('set-power')
-      .registerRunListener(async (args, state) => {
-        const power = Number(args.power);
-        this.log(`Setting power to: ${power}W`);
-
-        try {
-          // Non-zero => smartMode ON
-          const request = {
-            smartMode: power === 0 ? 0 : 1,
-            acMode: power < 0 ? 1 : 2,
-            inputLimit: power < 0 ? Math.abs(power) : 0,
-            outputLimit: power > 0 ? power : 0,
-          };
-
-          await this.sendRequest(request);
-          return true;
-
-        } catch (error) {
-          this.error('Error setting power:', error);
-          throw error;
-        }
-      });
-
-    // Register the reset-meters flow action listener
-    this.homey.flow.getActionCard('reset-meters')
-      .registerRunListener(async (args, state) => {
-        this.log('Resetting charge and discharge meters');
-        
-        try {
-          await this.resetMeters();
-          return true;
-        } catch (error) {
-          this.error('Error resetting meters:', error);
-          throw error;
-        }
-      });
-
     if (this.ip) {
       this.startPolling();
+    }
+  }
+
+  /**
+   * Flow action: set-power
+   * Rule:
+   *  - power == 0  => smartMode = 0
+   *  - power != 0  => smartMode = 1 (both charge/discharge) and keep it 1 for 100->200->300 etc.
+   */
+  async setPower(power: number) {
+    if (!Number.isFinite(power)) {
+      throw new Error('Invalid power value');
+    }
+
+    this.log(`Setting power to: ${power}W`);
+
+    try {
+      // Non-zero => smartMode ON
+      const request = {
+        smartMode: power === 0 ? 0 : 1,
+        acMode: power < 0 ? 1 : 2,
+        inputLimit: power < 0 ? Math.abs(power) : 0,
+        outputLimit: power > 0 ? power : 0,
+      };
+
+      await this.sendRequest(request);
+    } catch (error) {
+      this.error('Error setting power:', error);
+      throw error;
     }
   }
 
@@ -394,4 +380,6 @@ module.exports = class MyDevice extends Homey.Device {
     this.stopPolling();
   }
 
-};
+}
+
+export = ZendureDevice;
