@@ -1,15 +1,36 @@
 import Homey, { DiscoveryResultMDNSSD } from 'homey';
 
+const MAX_ENERGY_SAMPLE_GAP_MS = 30_000;
+const ENERGY_STORE_INTERVAL_MS = 30_000;
+const WATT_MILLISECONDS_PER_KWH = 3_600_000_000;
+
+type MeterReport = Record<string, unknown>;
+
 module.exports = class MyDevice extends Homey.Device {
   private ip?: string;
   private pollInterval?: NodeJS.Timeout;
   private failureCount: number = 0;
+  private importedEnergyKWh: number = 0;
+  private exportedEnergyKWh: number = 0;
+  private lastPowerSample?: { powerW: number; timestampMs: number };
+  private lastEnergyStoreAt: number = 0;
 
   /**
    * onInit is called when the device is initialized.
    */
   async onInit() {
     this.log('MyDevice has been initialized');
+    if (!this.hasCapability('meter_power.imported')) {
+      await this.addCapability('meter_power.imported');
+    }
+    if (!this.hasCapability('meter_power.exported')) {
+      await this.addCapability('meter_power.exported');
+    }
+    this.importedEnergyKWh = this.getStoredEnergy('importedEnergyKWh');
+    this.exportedEnergyKWh = this.getStoredEnergy('exportedEnergyKWh');
+    await this.setCapabilityValue('meter_power.imported', this.importedEnergyKWh);
+    await this.setCapabilityValue('meter_power.exported', this.exportedEnergyKWh);
+
     this.ip = this.getStoreValue('ip');
     if (this.ip) {
       this.startPolling();
@@ -70,6 +91,7 @@ module.exports = class MyDevice extends Homey.Device {
   async onDeleted() {
     this.log('MyDevice has been deleted');
     this.stopPolling();
+    await this.persistEnergyMeters(true);
   }
 
   startPolling() {
@@ -100,19 +122,27 @@ module.exports = class MyDevice extends Homey.Device {
     try {
       const fetch = (await import('node-fetch')).default;
       const response = await fetch(endpoint, { method: 'GET' });
-      const data = await response.json() as any;
+      const data = await response.json() as MeterReport;
       this.log(`Response: ${JSON.stringify(data)}`);
-      if (Number.isFinite(data.total_power)) {
-        await this.setCapabilityValue('measure_power', data.total_power);
+      const totalPower = data['total_power'];
+      if (typeof totalPower === 'number' && Number.isFinite(totalPower)) {
+        await this.setCapabilityValue('measure_power', totalPower);
+        this.updateEnergyMeters(totalPower, Date.now());
+        await this.setCapabilityValue('meter_power.imported', this.importedEnergyKWh);
+        await this.setCapabilityValue('meter_power.exported', this.exportedEnergyKWh);
+        await this.persistEnergyMeters();
       }
-      if (Number.isFinite(data.a_aprt_power)) {
-        await this.setCapabilityValue('measure_power.p1', data.a_aprt_power);
+      const phase1Power = data['a_aprt_power'];
+      if (typeof phase1Power === 'number' && Number.isFinite(phase1Power)) {
+        await this.setCapabilityValue('measure_power.p1', phase1Power);
       }
-      if (Number.isFinite(data.b_aprt_power)) {
-        await this.setCapabilityValue('measure_power.p2', data.b_aprt_power);
+      const phase2Power = data['b_aprt_power'];
+      if (typeof phase2Power === 'number' && Number.isFinite(phase2Power)) {
+        await this.setCapabilityValue('measure_power.p2', phase2Power);
       }
-      if (Number.isFinite(data.c_aprt_power)) {
-        await this.setCapabilityValue('measure_power.p3', data.c_aprt_power);
+      const phase3Power = data['c_aprt_power'];
+      if (typeof phase3Power === 'number' && Number.isFinite(phase3Power)) {
+        await this.setCapabilityValue('measure_power.p3', phase3Power);
       }
       this.failureCount = 0;
       await this.setAvailable();
@@ -123,5 +153,58 @@ module.exports = class MyDevice extends Homey.Device {
         await this.setUnavailable();
       }
     }
+  }
+
+  private getStoredEnergy(key: string): number {
+    const value = this.getStoreValue(key);
+    return typeof value === 'number' && Number.isFinite(value) && value >= 0 ? value : 0;
+  }
+
+  private updateEnergyMeters(powerW: number, timestampMs: number) {
+    const previousSample = this.lastPowerSample;
+    if (previousSample) {
+      const elapsedMs = timestampMs - previousSample.timestampMs;
+      if (elapsedMs > 0 && elapsedMs <= MAX_ENERGY_SAMPLE_GAP_MS) {
+        const previousPowerW = previousSample.powerW;
+        if (previousPowerW * powerW < 0) {
+          const totalAbsolutePowerW = Math.abs(previousPowerW) + Math.abs(powerW);
+          const previousDurationMs = elapsedMs * (Math.abs(previousPowerW) / totalAbsolutePowerW);
+          const currentDurationMs = elapsedMs - previousDurationMs;
+          const previousEnergyKWh = Math.abs(previousPowerW)
+            * (previousDurationMs / (2 * WATT_MILLISECONDS_PER_KWH));
+          const currentEnergyKWh = Math.abs(powerW)
+            * (currentDurationMs / (2 * WATT_MILLISECONDS_PER_KWH));
+          if (previousPowerW > 0) {
+            this.importedEnergyKWh += previousEnergyKWh;
+          } else {
+            this.exportedEnergyKWh += previousEnergyKWh;
+          }
+          if (powerW > 0) {
+            this.importedEnergyKWh += currentEnergyKWh;
+          } else {
+            this.exportedEnergyKWh += currentEnergyKWh;
+          }
+        } else {
+          const averagePowerW = (Math.abs(previousPowerW) + Math.abs(powerW)) / 2;
+          const energyKWh = averagePowerW * (elapsedMs / WATT_MILLISECONDS_PER_KWH);
+          if (previousPowerW + powerW >= 0) {
+            this.importedEnergyKWh += energyKWh;
+          } else {
+            this.exportedEnergyKWh += energyKWh;
+          }
+        }
+      }
+    }
+    this.lastPowerSample = { powerW, timestampMs };
+  }
+
+  private async persistEnergyMeters(force = false) {
+    const now = Date.now();
+    if (!force && now - this.lastEnergyStoreAt < ENERGY_STORE_INTERVAL_MS) {
+      return;
+    }
+    await this.setStoreValue('importedEnergyKWh', this.importedEnergyKWh);
+    await this.setStoreValue('exportedEnergyKWh', this.exportedEnergyKWh);
+    this.lastEnergyStoreAt = now;
   }
 };

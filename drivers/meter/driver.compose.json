@@ -3,7 +3,14 @@
     "en": "Smart Meter"
   },
   "class": "sensor",
-  "capabilities": ["measure_power","measure_power.p1","measure_power.p2","measure_power.p3"],
+  "capabilities": [
+    "measure_power",
+    "measure_power.p1",
+    "measure_power.p2",
+    "measure_power.p3",
+    "meter_power.imported",
+    "meter_power.exported"
+  ],
   "capabilitiesOptions": {
     "measure_power": {
       "title": { "en": "Total Power", "nl": "Totaal vermogen" }
@@ -16,7 +23,18 @@
     },
     "measure_power.p3": {
       "title": { "en": "Phase 3 Power", "nl": "Fase 3 vermogen" }
+    },
+    "meter_power.imported": {
+      "title": { "en": "Total imported", "nl": "Totaal afgenomen" }
+    },
+    "meter_power.exported": {
+      "title": { "en": "Total exported", "nl": "Totaal teruggeleverd" }
     }
+  },
+  "energy": {
+    "cumulative": true,
+    "cumulativeImportedCapability": "meter_power.imported",
+    "cumulativeExportedCapability": "meter_power.exported"
   },
   "platforms": [
     "local"
